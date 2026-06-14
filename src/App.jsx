@@ -31,7 +31,8 @@ const PROMPTS_PAR_MODE = {
 };
 
 // 🌐 LIEN UNIQUE DE TON BACKEND RENDER (Ajuste l'adresse si nécessaire)
-const API_BASE_URL = 'https://wakhine-wolof-1.onrender.com/api/mots';
+const API_BASE_URL = 'https://wakhine-wolof-1.onrender.com;
+const API_URL = `${BASE_URL}/api/mots`;
 
 export default function App() {
   const [step, setStep] = useState('gatekeeper');
