@@ -1,164 +1,133 @@
 import React, { useState, useEffect } from 'react';
 
-// ⚠️ METS TON LIEN RENDER ICI (SANS le /api/mots à la fin)
-const RENDER_URL ="https://wakhine-wolof-1.onrender.com"; 
+const RENDER_URL ="https://wakhine-wolof-1.onrender.com"; // ⚠️ METS TON LIEN RENDER ICI
 
 function App() {
-  const [regions, setRegions] = useState([]);
-  const [wolof, setWolof] = useState("");
+  const [contributions, setContributions] = useState([]);
+  const [region, setRegion] = useState("");
+  const [saitLire, setSaitLire] = useState("");
   const [audioFile, setAudioFile] = useState(null);
-  const [codeSecurite, setCodeSecurite] = useState("");
-  const [recherche, setRecherche] = useState("");
   const [chargement, setChargement] = useState(false);
 
-  // Fonction pour récupérer les données depuis le backend Render
-  const chargerRegions = async () => {
+  const chargerContributions = async () => {
     try {
-      const reponse = await fetch(`${RENDER_URL}/api/mots`);
+      const reponse = await fetch(`${RENDER_URL}/api/contributions`);
       if (reponse.ok) {
         const donnees = await reponse.json();
-        setRegions(donnees);
+        setContributions(donnees);
       }
-    } catch (err) {
-      console.error("Erreur de récupération des données", err);
-    }
+    } catch (err) { console.error(err); }
   };
 
-  useEffect(() => {
-    chargerRegions();
-  }, []);
+  useEffect(() => { chargerContributions(); }, []);
 
-  // Fonction d'envoi du formulaire (Texte + Fichier Audio)
-  const enregistrerRegion = async (e) => {
+  const envoyerDonnees = async (e) => {
     e.preventDefault();
-    if (!wolof) return alert("Veuillez écrire le nom en Wolof");
-    if (!codeSecurite) return alert("Le code de sécurité est obligatoire pour enregistrer");
-
-    setChargement(true);
-
-    // Obligatoire pour envoyer un vrai fichier physique via HTTP
-    const formData = new FormData();
-    formData.append("wolof", wolof);
-    formData.append("codeSecurite", codeSecurite);
-    if (audioFile) {
-      formData.append("audioFile", audioFile);
+    if (!region || !saitLire || !audioFile) {
+      return alert("Veuillez remplir tous les champs et ajouter votre enregistrement audio.");
     }
 
+    setChargement(true);
+    const formData = new FormData();
+    formData.append("region", region);
+    formData.append("saitLire", saitLire);
+    formData.append("audioFile", audioFile);
+
     try {
-      const reponse = await fetch(`${RENDER_URL}/api/mots`, {
+      const reponse = await fetch(`${RENDER_URL}/api/contribuer`, {
         method: "POST",
-        body: formData // On envoie le conteneur FormData complet
+        body: formData
       });
 
       if (reponse.ok) {
-        await chargerRegions(); // Recharge la grille avec la nouvelle carte
-        setWolof("");
+        await chargerContributions();
+        setRegion("");
+        setSaitLire("");
         setAudioFile(null);
-        setCodeSecurite("");
-        document.getElementById("champAudio").value = ""; // Réinitialise l'input fichier
-        alert("Enregistré avec succès ! L'audio est sur Google Drive. 🇸🇳");
+        document.getElementById("inputAudio").value = "";
+        alert("Jërëjëf ! Votre enregistrement a bien été envoyé pour l'étude. 🇸🇳");
       } else {
-        const err = await reponse.json();
-        alert(`Refusé : ${err.detail}`);
+        alert("Une erreur est survenue lors de l'envoi.");
       }
     } catch (err) {
-      alert("Erreur de communication avec le serveur Render.");
+      alert("Erreur de connexion avec le serveur.");
     } finally {
       setChargement(false);
     }
   };
 
-  // Fonction de lecture de l'audio direct Google Drive
-  const lireAudio = (url) => {
-    if (!url) return alert("Aucun fichier audio associé à cette localité.");
-    const audio = new Audio(url);
-    audio.play().catch(() => alert("Erreur lors de la lecture de l'audio. Vérifiez les accès Drive."));
-  };
-
-  // Filtrage en temps réel pour la barre de recherche
-  const regionsFiltrees = regions.filter(r => 
-    r.wolof.toLowerCase().includes(recherche.toLowerCase())
-  );
-
   return (
     <div style={styles.container}>
       <header style={styles.header}>
         <h1 style={styles.titre}>Wakhin Wolof 🇸🇳</h1>
-        <p style={styles.sousTitre}>Système de Collecte et Préservation Phonétique des Localités</p>
+        <p style={styles.sousTitre}>Étude linguistique - Participez à la préservation de notre langue</p>
       </header>
 
-      {/* FORMULAIRE ENREGISTREUR */}
-      <form onSubmit={enregistrerRegion} style={styles.formulaire}>
-        <h3 style={{ margin: '0 0 10px 0', color: '#002F6C' }}>🔐 Zone Enregistreur (Sécurisée)</h3>
+      <form onSubmit={envoyerDonnees} style={styles.formulaire}>
+        <h3 style={{ color: '#002F6C', margin: '0 0 15px 0' }}>🎙️ Enregistrez votre voix</h3>
         
-        <label style={styles.label}>Nom de la localité en Wolof :</label>
-        <input 
-          type="text" placeholder="Ex: Cees, Ndakaaru, Ndar..." 
-          value={wolof} onChange={e => setWolof(e.target.value)} style={styles.input} 
-        />
-        
-        <label style={styles.label}>🎙️ Importer l'enregistrement audio (.mp3, .wav) :</label>
-        <input 
-          id="champAudio" type="file" accept="audio/*" 
-          onChange={e => setAudioFile(e.target.files[0])} style={styles.inputFile} 
-        />
+        <label style={styles.label}>1. Sélectionnez votre région d'origine :</label>
+        <select value={region} onChange={e => setRegion(e.target.value)} style={styles.input}>
+          <option value="">-- Choisir une région --</option>
+          <option value="Dakar">Dakar (Ndakaaru)</option>
+          <option value="Diourbel">Diourbel (Bawol)</option>
+          <option value="Fatick">Fatick</option>
+          <option value="Kaffrine">Kaffrine</option>
+          <option value="Kaolack">Kaolack (Gànjiar)</option>
+          <option value="Kedougou">Kédougou</option>
+          <option value="Kolda">Kolda</option>
+          <option value="Louga">Louga</option>
+          <option value="Matam">Matam</option>
+          <option value="Saint-Louis">Saint-Louis (Ndar)</option>
+          <option value="Sedhiou">Sédhiou</option>
+          <option value="Tambacounda">Tambacounda</option>
+          <option value="Thies">Thiès (Cees)</option>
+          <option value="Ziguinchor">Ziguinchor</option>
+        </select>
 
-        <label style={styles.labelSecret}>🔑 Code de sécurité requis :</label>
-        <input 
-          type="password" placeholder="Entrez le code secret" 
-          value={codeSecurite} onChange={e => setCodeSecurite(e.target.value)} style={styles.inputSecret} 
-        />
-        
+        <label style={styles.label}>2. Savez-vous lire l'alphabet Wolof ?</label>
+        <div style={{ display: 'flex', gap: '20px', padding: '5px 0' }}>
+          <label><input type="radio" name="lecture" value="Lecteur" checked={saitLire === "Lecteur"} onChange={e => setSaitLire(e.target.value)} /> Oui (Lecteur)</label>
+          <label><input type="radio" name="lecture" value="Non-Lecteur" checked={saitLire === "Non-Lecteur"} onChange={e => setSaitLire(e.target.value)} /> Non (Non-Lecteur)</label>
+        </div>
+
+        <label style={styles.label}>3. Importez votre fichier audio (.mp3 ou .wav) :</label>
+        <input id="inputAudio" type="file" accept="audio/*" onChange={e => setAudioFile(e.target.files[0])} style={styles.inputFile} />
+
         <button type="submit" disabled={chargement} style={styles.btnSubmit}>
-          {chargement ? "Envoi du fichier vers Google Drive en cours..." : "💾 Denc (Enregistrer)"}
+          {chargement ? "Envoi en cours..." : "📤 Envoyer mon enregistrement"}
         </button>
       </form>
 
-      {/* BARRE DE RECHERCHE POUR LE LECTEUR */}
-      <div style={{ marginBottom: '25px' }}>
-        <input 
-          type="text" placeholder="🔍 Seet (Rechercher une localité)..." 
-          value={recherche} onChange={e => setRecherche(e.target.value)} style={styles.inputRecherche}
-        />
-      </div>
-
-      {/* GRILLE DES CARTES REGIONALES */}
-      <main style={styles.grille}>
-        {regionsFiltrees.map((region) => (
-          <div key={region.id} style={styles.carte}>
-            <h2 style={styles.wolofText}>{region.wolof}</h2>
-            {region.audioUrl ? (
-              <button onClick={() => lireAudio(region.audioUrl)} style={styles.btnAudio}>🔊 Déglu</button>
-            ) : (
-              <span style={{ color: '#aaa', fontSize: '0.85rem', fontStyle: 'italic' }}>Aucun enregistrement</span>
-            )}
+      <h3 style={{ color: '#002F6C' }}>📊 Échantillons collectés ({contributions.length})</h3>
+      <div style={styles.grille}>
+        {contributions.map(c => (
+          <div key={c.id} style={styles.carte}>
+            <h4 style={{ margin: '0 0 5px 0', color: '#002F6C' }}>📍 {c.region}</h4>
+            <span style={c.sait_lire === "Lecteur" ? styles.badgeOui : styles.badgeNon}>{c.sait_lire}</span>
+            <button onClick={() => new Audio(c.audioUrl).play()} style={styles.btnAudio}>🔊 Écouter</button>
           </div>
         ))}
-        {regionsFiltrees.length === 0 && (
-          <p style={{ gridColumn: '1/-1', textAlign: 'center', color: '#666', fontStyle: 'italic' }}>Aucune localité trouvée.</p>
-        )}
-      </main>
+      </div>
     </div>
   );
 }
 
 const styles = {
-  container: { fontFamily: 'sans-serif', maxWidth: '800px', margin: '0 auto', padding: '20px', backgroundColor: '#FAFAFA', minHeight: '100vh' },
-  header: { textAlign: 'center', marginBottom: '30px' },
-  titre: { color: '#002F6C', margin: 0, fontSize: '2.3rem' },
-  sousTitre: { color: '#008751', fontWeight: 'bold', margin: '5px 0', fontSize: '1rem' },
-  formulaire: { backgroundColor: '#fff', padding: '20px', borderRadius: '10px', marginBottom: '30px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', gap: '6px', border: '1px solid #E0E0E0' },
-  label: { fontWeight: 'bold', color: '#333', fontSize: '0.9rem' },
-  labelSecret: { fontWeight: 'bold', color: '#D32F2F', fontSize: '0.9rem', marginTop: '5px' },
-  input: { padding: '10px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '1rem', marginBottom: '5px' },
-  inputFile: { padding: '10px 0', fontSize: '0.9rem', marginBottom: '5px' },
-  inputSecret: { padding: '10px', borderRadius: '6px', border: '2px solid #D32F2F', fontSize: '1rem', marginBottom: '10px', backgroundColor: '#FFEBEE' },
-  inputRecherche: { width: '100%', padding: '14px', borderRadius: '8px', border: '2px solid #002F6C', fontSize: '1.1rem', boxSizing: 'border-box' },
-  btnSubmit: { backgroundColor: '#008751', color: 'white', padding: '12px', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1rem', marginTop: '5px' },
-  grille: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px' },
-  carte: { padding: '25px', borderRadius: '10px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', textAlign: 'center', backgroundColor: 'white', border: '1px solid #EDEDED', display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '15px' },
-  wolofText: { color: '#002F6C', margin: 0, fontSize: '1.7rem', fontWeight: 'bold' },
-  btnAudio: { backgroundColor: '#008751', color: 'white', border: 'none', padding: '10px 20px', borderRadius: '20px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.95rem' }
+  container: { fontFamily: 'sans-serif', maxWidth: '600px', margin: '0 auto', padding: '20px' },
+  header: { textAlign: 'center', marginBottom: '20px' },
+  titre: { color: '#002F6C', margin: 0 },
+  sousTitre: { color: '#008751', fontSize: '0.9rem' },
+  formulaire: { backgroundColor: '#fff', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '30px' },
+  label: { fontWeight: 'bold', fontSize: '0.9rem', color: '#333' },
+  input: { padding: '10px', borderRadius: '5px', border: '1px solid #ccc' },
+  inputFile: { padding: '10px 0' },
+  btnSubmit: { backgroundColor: '#008751', color: '#fff', padding: '12px', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' },
+  grille: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' },
+  carte: { padding: '15px', backgroundColor: '#fff', borderRadius: '6px', border: '1px solid #ddd', textAlign: 'center' },
+  badgeOui: { backgroundColor: '#E8F5E9', color: '#2E7D32', padding: '2px 8px', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 'bold' },
+  badgeNon: { backgroundColor: '#FFEBEE', color: '#C62828', padding: '2px 8px', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 'bold' },
+  btnAudio: { marginTop: '10px', width: '100%', padding: '6px', backgroundColor: '#002F6C', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }
 };
 
 export default App;
