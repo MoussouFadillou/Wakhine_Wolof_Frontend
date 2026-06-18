@@ -1,17 +1,24 @@
- import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 
-const RENDER_URL="https://wakhine-wolof-1.onrender.com"; // ⚠️ METS TON LIEN RENDER ICI
+const RENDER_URL = "https://wakhine-wolof-1.onrender.com"; // ⚠️ METS TON LIEN RENDER ICI
 
 function App() {
   const [contributions, setContributions] = useState([]);
-  const [region, setRegion] = useState("");
-  const [saitLire, setSaitLire] = useState("");
   const [chargement, setChargement] = useState(false);
 
-  // États pour le magnétophone vocal
+  // Tous les champs demandés dans l'image
+  const [age, setAge] = useState("");
+  const [sexe, setSexe] = useState("");
+  const [region, setRegion] = useState("");
+  const [departement, setDepartement] = useState("");
+  const [accent, setAccent] = useState("");
+  const [alphabetisation, setAlphabetisation] = useState("");
+  const [typeParole, setTypeParole] = useState("");
+
+  // États du microphone en direct
   const [enEnregistrement, setEnEnregistrement] = useState(false);
-  const [audioBlob, setAudioBlob] = useState(null); // Stocke l'audio brut
-  const [audioUrlLocal, setAudioUrlLocal] = useState(""); // Pour que le locuteur s'écoute
+  const [audioBlob, setAudioBlob] = useState(null);
+  const [audioUrlLocal, setAudioUrlLocal] = useState("");
 
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
@@ -28,138 +35,154 @@ function App() {
 
   useEffect(() => { chargerContributions(); }, []);
 
-  // 1. DÉMARRER L'ENREGISTREMENT VOCAL
   const lancerEnregistrement = async () => {
     try {
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       mediaRecorderRef.current = new MediaRecorder(stream);
       chunksRef.current = [];
-
-      mediaRecorderRef.current.ondataavailable = (e) => {
-        if (e.data.size > 0) chunksRef.current.push(e.data);
-      };
-
+      mediaRecorderRef.current.ondataavailable = (e) => { if (e.data.size > 0) chunksRef.current.push(e.data); };
       mediaRecorderRef.current.onstop = () => {
         const blob = new Blob(chunksRef.current, { type: 'audio/mp3' });
         setAudioBlob(blob);
-        setAudioUrlLocal(URL.createObjectURL(blob)); // Crée un lien temporaire pour l'écoute
+        setAudioUrlLocal(URL.createObjectURL(blob));
       };
-
       mediaRecorderRef.current.start();
       setEnEnregistrement(true);
     } catch (err) {
-      alert("Impossible d'accéder au micro. Veuillez autoriser le micro dans votre navigateur.");
+      alert("Accès micro refusé ou indisponible.");
     }
   };
 
-  # 2. ARRÊTER L'ENREGISTREMENT VOCAL
   const arreterEnregistrement = () => {
     if (mediaRecorderRef.current && enEnregistrement) {
       mediaRecorderRef.current.stop();
-      // Coupe le micro proprement
       mediaRecorderRef.current.stream.getTracks().forEach(track => track.stop());
       setEnEnregistrement(false);
     }
   };
 
-  // 3. ENVOYER LA VOIX SUR RENDER / GOOGLE DRIVE
   const envoyerDonnees = async (e) => {
     e.preventDefault();
-    if (!region || !saitLire) return alert("Veuillez remplir votre région et votre profil.");
-    if (!audioBlob) return alert("Veuillez vous enregistrer avant d'envoyer.");
+    if (!age || !sexe || !region || !departement || !accent || !alphabetisation || !typeParole || !audioBlob) {
+      return alert("Veuillez remplir l'ensemble des critères sociolinguistiques et enregistrer votre voix.");
+    }
 
     setChargement(true);
     const formData = new FormData();
+    formData.append("age", age);
+    formData.append("sexe", sexe);
     formData.append("region", region);
-    formData.append("saitLire", saitLire);
-    
-    # On transforme l'enregistrement vocal en un vrai fichier audio pour le Backend
-    formData.append("audioFile", audioBlob, "enregistrement_vocal.mp3");
+    formData.append("departement", departement);
+    formData.append("accent", accent);
+    formData.append("alphabetisation", alphabetisation);
+    formData.append("type_parole", typeParole);
+    formData.append("audioFile", audioBlob, "oral_wolof.mp3");
 
     try {
-      const reponse = await fetch(`${RENDER_URL}/api/contribuer`, {
-        method: "POST",
-        body: formData
-      });
-
+      const reponse = await fetch(`${RENDER_URL}/api/contribuer`, { method: "POST", body: formData });
       if (reponse.ok) {
         await chargerContributions();
-        setRegion("");
-        setSaitLire("");
-        setAudioBlob(null);
-        setAudioUrlLocal("");
-        alert("Jërëjëf ! Votre voix a bien été envoyée sur Google Drive. 🇸🇳");
-      } else {
-        alert("Une erreur est survenue lors de l'envoi.");
-      }
-    } catch (err) {
-      alert("Erreur de connexion avec le serveur.");
-    } finally {
-      setChargement(false);
-    }
+        setAge(""); setSexe(""); setRegion(""); setDepartement(""); setAccent(""); setAlphabetisation(""); setTypeParole("");
+        setAudioBlob(null); setAudioUrlLocal("");
+        alert("Jërëjëf ! Les données et l'audio ont été envoyés sur le Drive. 🇸🇳");
+      } else { alert("Erreur serveur lors de l'enregistrement."); }
+    } catch (err) { alert("Erreur de connexion."); }
+    finally { setChargement(false); }
   };
 
   return (
     <div style={styles.container}>
       <header style={styles.header}>
         <h1 style={styles.titre}>Wakhin Wolof 🇸🇳</h1>
-        <p style={styles.sousTitre}>Laboratoire Phonétique Participatif</p>
+        <p style={styles.sousTitre}>Portail de Collecte de Données Phonétiques et Sociolinguistiques</p>
       </header>
 
+      {/* BOUTON EXPORT CSV POUR TOI (LE CHERCHEUR) */}
+      <div style={{ textAlign: 'right', marginBottom: '15px' }}>
+        <a href={`${RENDER_URL}/api/contributions/csv`} download style={styles.btnCsv}>
+          📥 Télécharger la base de données (CSV pour Excel)
+        </a>
+      </div>
+
       <form onSubmit={envoyerDonnees} style={styles.formulaire}>
-        <h3 style={{ color: '#002F6C', margin: '0 0 15px 0' }}>🎙️ Enregistrez votre prononciation</h3>
+        <h3 style={{ color: '#002F6C', margin: '0 0 10px 0' }}>📋 Profil de l'informateur (Locuteur)</h3>
         
-        <label style={styles.label}>1. Sélectionnez votre région :</label>
-        <select value={region} onChange={e => setRegion(e.target.value)} style={styles.input}>
-          <option value="">-- Choisir --</option>
-          <option value="Dakar">Dakar (Ndakaaru)</option>
-          <option value="Diourbel">Diourbel (Bawol)</option>
-          <option value="Fatick">Fatick</option>
-          <option value="Kaffrine">Kaffrine</option>
-          <option value="Kaolack">Kaolack</option>
-          <option value="Louga">Louga</option>
-          <option value="Saint-Louis">Saint-Louis (Ndar)</option>
-          <option value="Thies">Thiès (Cees)</option>
-          <option value="Ziguinchor">Ziguinchor</option>
+        <div style={styles.row}>
+          <div style={{ flex: 1 }}>
+            <label style={styles.label}>Âge :</label>
+            <input type="number" placeholder="Ex: 24" value={age} onChange={e => setAge(e.target.value)} style={styles.input} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={styles.label}>Sexe :</label>
+            <select value={sexe} onChange={e => setSexe(e.target.value)} style={styles.input}>
+              <option value="">-- Choisir --</option>
+              <option value="Homme">Homme</option>
+              <option value="Femme">Femme</option>
+            </select>
+          </div>
+        </div>
+
+        <div style={styles.row}>
+          <div style={{ flex: 1 }}>
+            <label style={styles.label}>Région :</label>
+            <input type="text" placeholder="Ex: Dakar, Thiès, Louga..." value={region} onChange={e => setRegion(e.target.value)} style={styles.input} />
+          </div>
+          <div style={{ flex: 1 }}>
+            <label style={styles.label}>Département :</label>
+            <input type="text" placeholder="Ex: Mbacké, Tivaouane..." value={departement} onChange={e => setDepartement(e.target.value)} style={styles.input} />
+          </div>
+        </div>
+
+        <label style={styles.label}>Accent régional dominant :</label>
+        <input type="text" placeholder="Ex: Baol-Baol, Ndar-Ndar, Lebou..." value={accent} onChange={e => setAccent(e.target.value)} style={styles.input} />
+
+        <label style={styles.label}>Niveau d’alphabétisation en Wolof :</label>
+        <select value={alphabetisation} onChange={e => setAlphabetisation(e.target.value)} style={styles.input}>
+          <option value="">-- Sélectionner --</option>
+          <option value="Sait lire et écrire (Alphabet Officiel)">Sait lire et écrire (Alphabet Officiel)</option>
+          <option value="Sait lire et écrire (Wolofal / Arabe)">Sait lire et écrire (Wolofal / Arabe)</option>
+          <option value="Non-alphabétisé en Wolof">Non-alphabétisé en Wolof</option>
         </select>
 
-        <label style={styles.label}>2. Savez-vous lire l'alphabet Wolof ?</label>
-        <div style={{ display: 'flex', gap: '20px', padding: '5px 0' }}>
-          <label><input type="radio" name="lecture" value="Lecteur" checked={saitLire === "Lecteur"} onChange={e => setSaitLire(e.target.value)} /> Oui (Lecteur)</label>
-          <label><input type="radio" name="lecture" value="Non-Lecteur" checked={saitLire === "Non-Lecteur"} onChange={e => setSaitLire(e.target.value)} /> Non (Non-Lecteur)</label>
-        </div>
+        <label style={styles.label}>Type de parole :</label>
+        <select value={typeParole} onChange={e => setTypeParole(e.target.value)} style={styles.input}>
+          <option value="">-- Sélectionner --</option>
+          <option value="Parole lue (Texte proposé)">Parole lue (Texte proposé)</option>
+          <option value="Parole spontanée (Description d'image / Conversation)">Parole spontanée (Description d'image / Conversation)</option>
+        </select>
 
-        {/* CONTROLES DU MICRO VOCAL */}
-        <label style={styles.label}>3. Cliquez pour enregistrer votre voix :</label>
+        <h3 style={{ color: '#002F6C', margin: '15px 0 5px 0' }}>🎙️ Enregistrement Vocal Direct</h3>
         <div style={styles.zoneMicro}>
           {!enEnregistrement ? (
-            <button type="button" onClick={lancerEnregistrement} style={styles.btnMicro}>🔴 Commencer à parler</button>
+            <button type="button" onClick={lancerEnregistrement} style={styles.btnMicro}>🔴 Commencer l'enregistrement</button>
           ) : (
-            <button type="button" onClick={arreterEnregistrement} style={styles.btnMicroStop}>🛑 Arrêter l'enregistrement</button>
+            <button type="button" onClick={arreterEnregistrement} style={styles.btnMicroStop}>🛑 Arrêter le micro</button>
           )}
-          
-          {enEnregistrement && <span style={styles.clignotant}>🎙️ Enregistrement en cours...</span>}
+          {enEnregistrement && <span style={styles.clignotant}>🎙️ Captation audio en cours...</span>}
         </div>
 
-        {/* RÉÉCOUTE DU LOCUTEUR AVANT ENVOI */}
         {audioUrlLocal && (
           <div style={styles.zoneReecoute}>
-            <span style={{ fontSize: '0.85rem', color: '#666' }}>🎧 Réécoutez-vous :</span>
-            <button type="button" onClick={() => new Audio(audioUrlLocal).play()} style={styles.btnLocalAudio}>▶️ Écouter mon enregistrement</button>
+            <span style={{ fontSize: '0.85rem', color: '#555' }}>🎧 Vérification de votre enregistrement :</span>
+            <button type="button" onClick={() => new Audio(audioUrlLocal).play()} style={styles.btnLocalAudio}>▶️ Écouter ma voix</button>
           </div>
         )}
 
         <button type="submit" disabled={chargement || enEnregistrement} style={styles.btnSubmit}>
-          {chargement ? "Envoi de l'audio vers Google Drive..." : "📤 Envoyer ma voix"}
+          {chargement ? "Envoi simultané des données & de l'audio..." : "📤 Finaliser et Envoyer au Drive"}
         </button>
       </form>
 
-      <h3 style={{ color: '#002F6C' }}>📊 Échantillons collectés ({contributions.length})</h3>
+      <h3 style={{ color: '#002F6C' }}>📊 Aperçu du Corpus ({contributions.length} échantillons)</h3>
       <div style={styles.grille}>
         {contributions.map(c => (
           <div key={c.id} style={styles.carte}>
-            <h4 style={{ margin: '0 0 5px 0', color: '#002F6C' }}>📍 {c.region}</h4>
-            <span style={c.sait_lire === "Lecteur" ? styles.badgeOui : styles.badgeNon}>{c.sait_lire}</span>
+            <h4 style={{ margin: '0 0 5px 0', color: '#002F6C' }}>📍 {c.region} ({c.departement})</h4>
+            <div style={{ fontSize: '0.8rem', color: '#555', textAlign: 'left', marginBottom: '8px' }}>
+              • <b>Profil :</b> {c.sexe}, {c.age} ans<br/>
+              • <b>Accent :</b> {c.accent}<br/>
+              • <b>Type :</b> {c.type_parole}
+            </div>
             <button onClick={() => new Audio(c.audioUrl).play()} style={styles.btnAudio}>🔊 Écouter</button>
           </div>
         ))}
@@ -169,25 +192,25 @@ function App() {
 }
 
 const styles = {
-  container: { fontFamily: 'sans-serif', maxWidth: '600px', margin: '0 auto', padding: '20px' },
-  header: { textAlign: 'center', marginBottom: '20px' },
-  titre: { color: '#002F6C', margin: 0 },
-  sousTitre: { color: '#008751', fontSize: '0.9rem' },
-  formulaire: { backgroundColor: '#fff', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '30px' },
-  label: { fontWeight: 'bold', fontSize: '0.9rem', color: '#333', marginTop: '5px' },
-  input: { padding: '10px', borderRadius: '5px', border: '1px solid #ccc' },
-  zoneMicro: { display: 'flex', alignItems: 'center', gap: '15px', margin: '5px 0' },
+  container: { fontFamily: 'sans-serif', maxWidth: '700px', margin: '0 auto', padding: '20px' },
+  header: { textAlign: 'center', marginBottom: '15px' },
+  titre: { color: '#002F6C', margin: 0, fontSize: '2rem' },
+  sousTitre: { color: '#008751', fontSize: '0.9rem', fontWeight: 'bold' },
+  btnCsv: { display: 'inline-block', backgroundColor: '#002F6C', color: 'white', padding: '8px 12px', borderRadius: '5px', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.85rem' },
+  formulaire: { backgroundColor: '#fff', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', gap: '10px', border: '1px solid #ddd' },
+  row: { display: 'flex', gap: '15px' },
+  label: { fontWeight: 'bold', fontSize: '0.85rem', color: '#333' },
+  input: { padding: '8px', borderRadius: '5px', border: '1px solid #ccc', width: '100%', boxSizing: 'border-box', fontSize: '0.9rem' },
+  zoneMicro: { display: 'flex', alignItems: 'center', gap: '15px' },
   btnMicro: { backgroundColor: '#D32F2F', color: 'white', border: 'none', padding: '10px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' },
   btnMicroStop: { backgroundColor: '#333', color: 'white', border: 'none', padding: '10px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' },
-  clignotant: { color: '#D32F2F', fontWeight: 'bold', fontSize: '0.9rem', animation: 'blink 1s infinite' },
-  zoneReecoute: { backgroundColor: '#F5F5F5', padding: '10px', borderRadius: '5px', display: 'flex', flexDirection: 'column', gap: '5px' },
-  btnLocalAudio: { backgroundColor: '#002F6C', color: 'white', border: 'none', padding: '8px', borderRadius: '4px', cursor: 'pointer' },
+  clignotant: { color: '#D32F2F', fontWeight: 'bold', fontSize: '0.85rem' },
+  zoneReecoute: { backgroundColor: '#F5F5F5', padding: '8px', borderRadius: '5px', display: 'flex', flexDirection: 'column', gap: '5px' },
+  btnLocalAudio: { backgroundColor: '#002F6C', color: 'white', border: 'none', padding: '6px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem' },
   btnSubmit: { backgroundColor: '#008751', color: '#fff', padding: '12px', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1rem', marginTop: '10px' },
   grille: { display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' },
-  carte: { padding: '15px', backgroundColor: '#fff', borderRadius: '6px', border: '1px solid #ddd', textAlign: 'center' },
-  badgeOui: { backgroundColor: '#E8F5E9', color: '#2E7D32', padding: '2px 8px', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 'bold' },
-  badgeNon: { backgroundColor: '#FFEBEE', color: '#C62828', padding: '2px 8px', borderRadius: '10px', fontSize: '0.75rem', fontWeight: 'bold' },
-  btnAudio: { marginTop: '10px', width: '100%', padding: '6px', backgroundColor: '#002F6C', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer' }
+  carte: { padding: '12px', backgroundColor: '#fff', borderRadius: '6px', border: '1px solid #ddd', textAlign: 'center' },
+  btnAudio: { width: '100%', padding: '6px', backgroundColor: '#008751', color: 'white', border: 'none', borderRadius: '4px', cursor: 'pointer', fontWeight: 'bold', fontSize: '0.85rem' }
 };
 
 export default App;
