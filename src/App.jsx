@@ -1,25 +1,38 @@
 import React, { useState, useEffect } from 'react';
 
 // ⚠️ METS TON LIEN RENDER ICI (SANS le /api/mots à la fin)
-const RENDER_URL = "https://wakhine-wolof-1.onrender.com"; 
+const RENDER_URL = "https://wakhine-wolof-1.onrender.com/"; 
+
+// Liste de secours au cas où le serveur Render est en panne ou endormi
+const REGIONS_DE_SECOURS = [
+  { id: 1, wolof: "Ndakaaru", audioUrl: "" },
+  { id: 2, wolof: "Cees", audioUrl: "" },
+  { id: 3, wolof: "Géejawaay", audioUrl: "" },
+  { id: 4, wolof: "Ndar", audioUrl: "" },
+  { id: 5, wolof: "Ndoxum Ngéej", audioUrl: "" }
+];
 
 function App() {
-  const [regions, setRegions] = useState([]);
+  const [regions, setRegions] = useState(REGIONS_DE_SECOURS); // Charge la liste de secours par défaut
   const [wolof, setWolof] = useState("");
   const [audioUrl, setAudioUrl] = useState("");
-  const [codeSecurite, setCodeSecurite] = useState(""); // Stocke le code tapé
+  const [codeSecurite, setCodeSecurite] = useState("");
   const [recherche, setRecherche] = useState("");
   const [chargement, setChargement] = useState(false);
+  const [serveurActif, setServeurActif] = useState(false);
 
+  // Tenter de charger les données depuis Render
   const chargerRegions = async () => {
     try {
       const reponse = await fetch(`${RENDER_URL}/api/mots`);
       if (reponse.ok) {
         const donnees = await reponse.json();
-        setRegions(donnees);
+        setRegions(donnees); // Si Render répond, on utilise ses données
+        setServeurActif(true);
       }
     } catch (err) {
-      console.error("Erreur de connexion au serveur Render :", err);
+      console.warn("Render ne répond pas, utilisation de la liste locale de secours.");
+      setServeurActif(false);
     }
   };
 
@@ -30,36 +43,50 @@ function App() {
   const enregistrerRegion = async (e) => {
     e.preventDefault();
     if (!wolof) return alert("Veuillez écrire le nom en Wolof");
-    if (!codeSecurite) return alert("Veuillez entrer le code de sécurité pour enregistrer");
 
+    // Si le serveur est éteint, on simule l'enregistrement en local pour ta démo !
+    if (!serveurActif) {
+      const nouvelleLocalite = {
+        id: Date.now(),
+        wolof: wolof.strip ? wolof.strip() : wolof,
+        audioUrl: audioUrl
+      };
+      setRegions([...regions, nouvelleLocalite]);
+      setWolof("");
+      setAudioUrl("");
+      alert("⚠️ Mode Local : Enregistré temporairement sur le navigateur (Render est hors-ligne).");
+      return;
+    }
+
+    // Si le serveur est actif, on envoie normalement à Render
+    if (!codeSecurite) return alert("Veuillez entrer le code de sécurité");
     setChargement(true);
     try {
       const reponse = await fetch(`${RENDER_URL}/api/mots`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ wolof, audioUrl, codeSecurite }) // On envoie le code secret au serveur
+        body: JSON.stringify({ wolof, audioUrl, codeSecurite })
       });
 
       if (reponse.ok) {
         await chargerRegions();
         setWolof("");
         setAudioUrl("");
-        alert("Enregistré avec succès ! 🇸🇳");
+        alert("Enregistré avec succès sur Render ! 🇸🇳");
       } else {
         const errData = await reponse.json();
-        alert(`Refusé : ${errData.detail || "Erreur d'enregistrement"}`);
+        alert(`Refusé : ${errData.detail || "Erreur"}`);
       }
     } catch (err) {
-      alert("Impossible de joindre Render.");
+      alert("Erreur de connexion au serveur.");
     } finally {
       setChargement(false);
     }
   };
 
   const lireAudio = (url) => {
-    if (!url) return alert("Aucun fichier audio lié à cette localité");
-    const audio = new Audio(url);
-    audio.play().catch(() => alert("Erreur de lecture Drive. Vérifie le partage public."));
+    if (!url) return alert("Aucun fichier audio lié");
+    new Audio(url).play().catch(() => alert("Erreur de lecture audio."));
   };
 
   const regionsFiltrees = regions.filter(r => 
@@ -71,45 +98,41 @@ function App() {
       <header style={styles.header}>
         <h1 style={styles.titre}>Wakhin Wolof 🇸🇳</h1>
         <p style={styles.sousTitre}>Orthographe officielle des régions du Sénégal</p>
-        <div style={styles.statutBadge}>📢 Mode : Tout le monde peut écouter (Lecteur)</div>
+        
+        {/* Indicateur d'état du serveur Render */}
+        <div style={serveurActif ? styles.badgeEnLigne : styles.badgeHorsLigne}>
+          {serveurActif ? "🟢 Connexion Render Établie" : "⚠️ Mode Secours Local Actif"}
+        </div>
       </header>
 
-      {/* FORMULAIRE D'AJOUT SÉCURISÉ */}
+      {/* FORMULAIRE */}
       <form onSubmit={enregistrerRegion} style={styles.formulaire}>
-        <h3 style={{ margin: '0 0 10px 0', color: '#002F6C' }}>🔐 Zone Enregistreur (Réservé)</h3>
+        <h3 style={{ margin: '0 0 10px 0', color: '#002F6C' }}>🔐 Zone Enregistreur</h3>
         
         <label style={styles.label}>Nom en Wolof :</label>
-        <input 
-          type="text" placeholder="Ex: Cees, Ndakaaru..." 
-          value={wolof} onChange={e => setWolof(e.target.value)} style={styles.input} 
-        />
+        <input type="text" placeholder="Ex: Cees, Ndakaaru..." value={wolof} onChange={e => setWolof(e.target.value)} style={styles.input} />
         
         <label style={styles.label}>Lien audio Google Drive :</label>
-        <input 
-          type="text" placeholder="https://drive.google.com/drive/u/2/folders/1i4Nmu25ja6TQpW0usdxdFXep2bP-NCcJ" 
-          value={audioUrl} onChange={e => setAudioUrl(e.target.value)} style={styles.input} 
-        />
+        <input type="text" placeholder="https://drive.google.com/..." value={audioUrl} onChange={e => setAudioUrl(e.target.value)} style={styles.input} />
 
-        <label style={styles.labelColorié}>🔑 Code de sécurité requis pour Enregistrer :</label>
-        <input 
-          type="password" placeholder="Entrez le code secret" 
-          value={codeSecurite} onChange={e => setCodeSecurite(e.target.value)} style={styles.inputSecret} 
-        />
+        {serveurActif && (
+          <>
+            <label style={styles.labelColorié}>🔑 Code de sécurité :</label>
+            <input type="password" placeholder="Code secret" value={codeSecurite} onChange={e => setCodeSecurite(e.target.value)} style={styles.inputSecret} />
+          </>
+        )}
         
         <button type="submit" disabled={chargement} style={styles.btnSubmit}>
-          {chargement ? "Vérification et envoi..." : "💾 Denc mi (Enregistrer)"}
+          {chargement ? "Denc mi ngiy wéy..." : "💾 Denc (Enregistrer)"}
         </button>
       </form>
 
-      {/* BARRE DE RECHERCHE */}
+      {/* RECHERCHE */}
       <div style={{ marginBottom: '25px' }}>
-        <input 
-          type="text" placeholder="🔍 Seet (Rechercher une région en Wolof)..." 
-          value={recherche} onChange={e => setRecherche(e.target.value)} style={styles.inputRecherche}
-        />
+        <input type="text" placeholder="🔍 Seet (Rechercher)..." value={recherche} onChange={e => setRecherche(e.target.value)} style={styles.inputRecherche}/>
       </div>
 
-      {/* GRILLE DES CARTES AUDIO */}
+      {/* GRILLE */}
       <main style={styles.grille}>
         {regionsFiltrees.map((region) => (
           <div key={region.id} style={styles.carte}>
@@ -131,7 +154,8 @@ const styles = {
   header: { textAlign: 'center', marginBottom: '30px' },
   titre: { color: '#002F6C', margin: 0, fontSize: '2.3rem' },
   sousTitre: { color: '#008751', fontWeight: 'bold', margin: '5px 0' },
-  statutBadge: { display: 'inline-block', backgroundColor: '#E3F2FD', color: '#0D47A1', padding: '6px 12px', borderRadius: '15px', fontSize: '0.85rem', fontWeight: 'bold', marginTop: '10px' },
+  badgeEnLigne: { display: 'inline-block', backgroundColor: '#E8F5E9', color: '#2E7D32', padding: '6px 12px', borderRadius: '15px', fontSize: '0.85rem', fontWeight: 'bold', marginTop: '10px' },
+  badgeHorsLigne: { display: 'inline-block', backgroundColor: '#FFF3E0', color: '#E65100', padding: '6px 12px', borderRadius: '15px', fontSize: '0.85rem', fontWeight: 'bold', marginTop: '10px' },
   formulaire: { backgroundColor: '#fff', padding: '20px', borderRadius: '10px', marginBottom: '30px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', gap: '5px', border: '1px solid #E0E0E0' },
   label: { fontWeight: 'bold', color: '#333', fontSize: '0.9rem' },
   labelColorié: { fontWeight: 'bold', color: '#D32F2F', fontSize: '0.9rem', marginTop: '5px' },
