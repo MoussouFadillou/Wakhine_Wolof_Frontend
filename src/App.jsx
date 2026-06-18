@@ -6,7 +6,7 @@ const RENDER_URL = "https://wakhine-wolof-1.onrender.com";
 function App() {
   const [regions, setRegions] = useState([]);
   const [wolof, setWolof] = useState("");
-  const [audioUrl, setAudioUrl] = useState("");
+  const [audioUrl, setAudioUrl] = useState(""); // C'est ici que le lien Drive est stocké
   const [recherche, setRecherche] = useState("");
   const [chargement, setChargement] = useState(false);
 
@@ -37,13 +37,13 @@ function App() {
       const reponse = await fetch(`${RENDER_URL}/api/mots`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ wolof, audioUrl })
+        body: JSON.stringify({ wolof, audioUrl }) // Envoie le nom Wolof ET le lien Drive au serveur
       });
 
       if (reponse.ok) {
-        await chargerRegions(); // Actualise la liste en direct
+        await chargerRegions(); // Actualise la liste immédiatement sur l'écran
         setWolof("");
-        setAudioUrl("");
+        setAudioUrl(""); // Vide la case du lien Drive après réussite
         alert("Enregistré avec succès en Wolof sur Render ! 🇸🇳");
       } else {
         alert("Erreur lors de l'enregistrement sur le serveur.");
@@ -58,10 +58,10 @@ function App() {
   const lireAudio = (url) => {
     if (!url) return alert("Aucun fichier audio lié à cette localité");
     const audio = new Audio(url);
-    audio.play().catch(() => alert("Erreur de lecture. Vérifie les droits d'accès sur Google Drive."));
+    audio.play().catch(() => alert("Erreur de lecture. Vérifie que ton fichier Drive est bien partagé en mode 'Tous les utilisateurs disposant du lien'."));
   };
 
-  // Filtrage intelligent pour la recherche (Prend en compte les accents wolof)
+  // Filtrage pour la recherche
   const regionsFiltrees = regions.filter(r => 
     r.wolof.toLowerCase().includes(recherche.toLowerCase())
   );
@@ -76,20 +76,27 @@ function App() {
       {/* FORMULAIRE D'AJOUT */}
       <form onSubmit={enregistrerRegion} style={styles.formulaire}>
         <h3 style={{ margin: '0 0 10px 0', color: '#002F6C' }}>✍️ Lëkkalé (Ajouter une localité)</h3>
+        
+        {/* CASE 1 : NOM EN WOLOF */}
+        <label style={styles.label}>Nom en Wolof :</label>
         <input 
           type="text" 
-          placeholder="Nom officiel en Wolof (ex: Cees, Ndakaaru, Géejawaay...)" 
+          placeholder="Ex: Cees, Ndakaaru, Géejawaay..." 
           value={wolof} 
           onChange={e => setWolof(e.target.value)} 
           style={styles.input} 
         />
+        
+        {/* CASE 2 : LIEN DRIVE (C'est ici qu'on le colle !) */}
+        <label style={styles.label}>Lien audio Google Drive :</label>
         <input 
           type="text" 
-          placeholder="Lien audio Google Drive (Optionnel)" 
+          placeholder="https://drive.google.com/drive/u/2/folders/1i4Nmu25ja6TQpW0usdxdFXep2bP-NCcJ" 
           value={audioUrl} 
-          onChange={e => setAudioUrl(e.target.value)} 
+          onChange={e => setAudioUrl(e.target.value)} // Connecte correctement la case au code
           style={styles.input} 
         />
+        
         <button type="submit" disabled={chargement} style={styles.btnSubmit}>
           {chargement ? "Denc mi ngiy wéy..." : "💾 Denc (Enregistrer)"}
         </button>
@@ -106,11 +113,13 @@ function App() {
         />
       </div>
 
-      {/* GRILLE DES CARTES */}
+      {/* GRILLE DES CARTES AUDIO */}
       <main style={styles.grille}>
         {regionsFiltrees.map((region) => (
           <div key={region.id} style={styles.carte}>
             <h2 style={styles.wolofText}>{region.wolof}</h2>
+            
+            {/* Condition : Si le lien audio existe, on met le bouton Déglu, sinon on écrit qu'il n'y a pas d'audio */}
             {region.audioUrl ? (
               <button onClick={() => lireAudio(region.audioUrl)} style={styles.btnAudio}>
                 🔊 Déglu
@@ -130,10 +139,11 @@ const styles = {
   header: { textAlign: 'center', marginBottom: '30px' },
   titre: { color: '#002F6C', margin: 0, fontSize: '2.3rem' },
   sousTitre: { color: '#008751', fontWeight: 'bold', margin: '5px 0' },
-  formulaire: { backgroundColor: '#fff', padding: '20px', borderRadius: '10px', marginBottom: '30px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', gap: '12px', border: '1px solid #E0E0E0' },
-  input: { padding: '12px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '1rem' },
+  formulaire: { backgroundColor: '#fff', padding: '20px', borderRadius: '10px', marginBottom: '30px', boxShadow: '0 2px 10px rgba(0,0,0,0.05)', display: 'flex', flexDirection: 'column', gap: '8px', border: '1px solid #E0E0E0' },
+  label: { fontWeight: 'bold', color: '#333', fontSize: '0.9rem', marginTop: '5px' },
+  input: { padding: '12px', borderRadius: '6px', border: '1px solid #ccc', fontSize: '1rem', marginBottom: '10px' },
   inputRecherche: { width: '100%', padding: '14px', borderRadius: '8px', border: '2px solid #002F6C', fontSize: '1.1rem', boxSizing: 'border-box' },
-  btnSubmit: { backgroundColor: '#008751', color: 'white', padding: '12px', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1rem' },
+  btnSubmit: { backgroundColor: '#008751', color: 'white', padding: '12px', border: 'none', borderRadius: '6px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1rem', marginTop: '10px' },
   grille: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '20px' },
   carte: { padding: '25px', borderRadius: '10px', boxShadow: '0 4px 6px rgba(0,0,0,0.05)', textAlign: 'center', backgroundColor: 'white', border: '1px solid #EDEDED', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', gap: '15px' },
   wolofText: { color: '#002F6C', margin: 0, fontSize: '1.7rem', fontWeight: 'bold' },
