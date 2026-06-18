@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 
 // ⚠️ METS TON LIEN RENDER ICI (SANS le /api/mots à la fin)
-const RENDER_URL = " "https://wakhine-wolof-1.onrender.com""; 
+const RENDER_URL = "https://wakhine-wolof-1.onrender.com"; 
 
 function App() {
   const [regions, setRegions] = useState([]);
