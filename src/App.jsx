@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-const RENDER_URL = "https://wakhine-wolof-1.onrender.com"; // ⚠️ METS TON LIEN RENDER ICI
+const RENDER_URL="https://wakhine-wolof-1.onrender.com"; // ⚠️ METS TON LIEN RENDER ICI
 
-// 🇸🇳 Liste des phrases en Wolof proposées pour la "Parole lue" (Tu peux en ajouter d'autres pour ta thèse)
 const PHRASES_WOLOF = [
   "Ndakaaru laa dëkk, waaye Ndar laa juddoo.",
   "Xale yi bëgg nañu jàng wolof ci jalloré bi.",
@@ -15,7 +14,6 @@ function App() {
   const [contributions, setContributions] = useState([]);
   const [chargement, setChargement] = useState(false);
 
-  // Métadonnées
   const [age, setAge] = useState("");
   const [sexe, setSexe] = useState("");
   const [region, setRegion] = useState("");
@@ -23,9 +21,8 @@ function App() {
   const [accent, setAccent] = useState("");
   const [alphabetisation, setAlphabetisation] = useState("");
   const [typeParole, setTypeParole] = useState("");
-  const [phraseALire, setPhraseALire] = useState(""); // Stocke la phrase à afficher
+  const [transcription, setTranscription] = useState(""); // État pour stocker la transcription
 
-  // États du microphone
   const [enEnregistrement, setEnEnregistrement] = useState(false);
   const [audioBlob, setAudioBlob] = useState(null);
   const [audioUrlLocal, setAudioUrlLocal] = useState("");
@@ -33,13 +30,13 @@ function App() {
   const mediaRecorderRef = useRef(null);
   const chunksRef = useRef([]);
 
-  // Choisit une phrase au hasard quand le type de parole change
+  // Gère automatiquement le texte selon le type de parole
   useEffect(() => {
     if (typeParole === "Parole lue (Texte proposé)") {
       const auHasard = PHRASES_WOLOF[Math.floor(Math.random() * PHRASES_WOLOF.length)];
-      setPhraseALire(auHasard);
+      setTranscription(auHasard); // Remplissage automatique pour le texte lu
     } else {
-      setPhraseALire("");
+      setTranscription(""); // Laisse vide pour saisie manuelle si parole spontanée
     }
   }, [typeParole]);
 
@@ -68,9 +65,7 @@ function App() {
       };
       mediaRecorderRef.current.start();
       setEnEnregistrement(true);
-    } catch (err) {
-      alert("Accès micro refusé. Veuillez autoriser le micro dans votre navigateur.");
-    }
+    } catch (err) { alert("Accès micro refusé."); }
   };
 
   const arreterEnregistrement = () => {
@@ -83,57 +78,49 @@ function App() {
 
   const envoyerDonnees = async (e) => {
     e.preventDefault();
-    if (!age || !sexe || !region || !departement || !accent || !alphabetisation || !typeParole || !audioBlob) {
-      return alert("Veuillez remplir l'ensemble des critères et enregistrer votre voix.");
+    if (!age || !sexe || !region || !departement || !accent || !alphabetisation || !typeParole || !transcription || !audioBlob) {
+      return alert("Veuillez remplir l'ensemble des critères (y compris la transcription) et enregistrer l'audio.");
     }
 
     setChargement(true);
     const formData = new FormData();
-    formData.append("age", parseInt(age)); // On force la conversion en nombre entier pour éviter l'erreur serveur
+    formData.append("age", parseInt(age));
     formData.append("sexe", sexe);
     formData.append("region", region);
     formData.append("departement", departement);
     formData.append("accent", accent);
     formData.append("alphabetisation", alphabetisation);
-    
-    // Si c'est une parole lue, on ajoute la phrase lue au type de parole pour s'en souvenir dans Excel
-    const typeFinal = typeParole === "Parole lue (Texte proposé)" ? `Lue: ${phraseALire}` : typeParole;
-    formData.append("type_parole", typeFinal);
-    
+    formData.append("type_parole", typeParole);
+    formData.append("transcription", transcription); // Envoi de la transcription pure au serveur
     formData.append("audioFile", audioBlob, "oral_wolof.mp3");
 
     try {
       const reponse = await fetch(`${RENDER_URL}/api/contribuer`, { method: "POST", body: formData });
       if (reponse.ok) {
         await chargerContributions();
-        setAge(""); setSexe(""); setRegion(""); setDepartement(""); setAccent(""); setAlphabetisation(""); setTypeParole("");
+        setAge(""); setSexe(""); setRegion(""); setDepartement(""); setAccent(""); setAlphabetisation(""); setTypeParole(""); setTranscription("");
         setAudioBlob(null); setAudioUrlLocal("");
-        alert("Jërëjëf ! Les données et l'audio ont été envoyés sur le Drive. 🇸🇳");
-      } else { 
-        alert("Erreur serveur lors de l'enregistrement. Vérifiez l'ID de votre dossier Drive ou les logs Render."); 
-      }
-    } catch (err) { 
-      alert("Impossible de joindre le serveur. Assurez-vous que votre projet Render n'est pas en veille."); 
-    } finally { 
-      setChargement(false); 
-    }
+        alert("Données, transcription et audio enregistrés ! 🇸🇳");
+      } else { alert("Erreur lors de l'enregistrement."); }
+    } catch (err) { alert("Erreur de connexion au serveur."); }
+    finally { setChargement(false); }
   };
 
   return (
     <div style={styles.container}>
       <header style={styles.header}>
         <h1 style={styles.titre}>Wakhin Wolof 🇸🇳</h1>
-        <p style={styles.sousTitre}>Portail de Collecte Phonétique et Sociolinguistique</p>
+        <p style={styles.sousTitre}>Portail de Collecte Phonétique</p>
       </header>
 
       <div style={{ textAlign: 'right', marginBottom: '15px' }}>
         <a href={`${RENDER_URL}/api/contributions/csv`} download style={styles.btnCsv}>
-          📥 Télécharger la base de données (CSV pour Excel)
+          📥 Télécharger le CSV (avec Transcriptions)
         </a>
       </div>
 
       <form onSubmit={envoyerDonnees} style={styles.formulaire}>
-        <h3 style={{ color: '#002F6C', margin: '0 0 10px 0' }}>📋 Profil de l'informateur (Locuteur)</h3>
+        <h3 style={{ color: '#002F6C', margin: '0' }}>📋 Profil du Locuteur</h3>
         
         <div style={styles.row}>
           <div style={{ flex: 1 }}>
@@ -153,16 +140,16 @@ function App() {
         <div style={styles.row}>
           <div style={{ flex: 1 }}>
             <label style={styles.label}>Région :</label>
-            <input type="text" placeholder="Ex: Dakar, Thiès..." value={region} onChange={e => setRegion(e.target.value)} style={styles.input} />
+            <input type="text" placeholder="Ex: Dakar" value={region} onChange={e => setRegion(e.target.value)} style={styles.input} />
           </div>
           <div style={{ flex: 1 }}>
             <label style={styles.label}>Département :</label>
-            <input type="text" placeholder="Ex: Tivaouane, Mbacké..." value={departement} onChange={e => setDepartement(e.target.value)} style={styles.input} />
+            <input type="text" placeholder="Ex: Mbacké" value={departement} onChange={e => setDepartement(e.target.value)} style={styles.input} />
           </div>
         </div>
 
         <label style={styles.label}>Accent régional dominant :</label>
-        <input type="text" placeholder="Ex: Baol-Baol, Ndar-Ndar..." value={accent} onChange={e => setAccent(e.target.value)} style={styles.input} />
+        <input type="text" placeholder="Ex: Baol-Baol" value={accent} onChange={e => setAccent(e.target.value)} style={styles.input} />
 
         <label style={styles.label}>Niveau d’alphabétisation en Wolof :</label>
         <select value={alphabetisation} onChange={e => setAlphabetisation(e.target.value)} style={styles.input}>
@@ -179,33 +166,43 @@ function App() {
           <option value="Parole spontanée (Description d'image)">Parole spontanée (Description d'image)</option>
         </select>
 
-        {/* 🇸🇳 ZONE TEXTE EN WOLOF SI "PAROLE LUE" SELECTIONNÉE */}
-        {phraseALire && (
-          <div style={styles.zoneTexteWolof}>
-            <p style={{ margin: '0 0 5px 0', fontSize: '0.85rem', color: '#002F6C', fontWeight: 'bold' }}>📖 Veuillez lire cette phrase à haute voix lors de l'enregistrement :</p>
-            <h2 style={styles.texteWolofStyle}>« {phraseALire} »</h2>
-          </div>
-        )}
+        {/* 📝 ZONE DE TRANSCRIPTION CONFIGURÉE */}
+        <div style={styles.zoneTranscription}>
+          <label style={styles.label}>📝 Transcription du texte (en Wolof) :</label>
+          {typeParole === "Parole lue (Texte proposé)" ? (
+            <div style={styles.encadreLecture}>
+              <p style={{ margin: '0 0 5px 0', fontSize: '0.8rem', color: '#555' }}>Phrase générée à lire à haute voix :</p>
+              <h3 style={{ margin: 0, color: '#002F6C' }}>« {transcription} »</h3>
+            </div>
+          ) : (
+            <textarea 
+              rows="3" 
+              placeholder="Écrivez ici la transcription textuelle de ce que dit le locuteur..." 
+              value={transcription} 
+              onChange={e => setTranscription(e.target.value)} 
+              style={styles.textarea}
+            />
+          )}
+        </div>
 
-        <h3 style={{ color: '#002F6C', margin: '15px 0 5px 0' }}>🎙️ Enregistrement Vocal Direct</h3>
+        <h3 style={{ color: '#002F6C', margin: '10px 0 0 0' }}>🎙️ Enregistrement Micro</h3>
         <div style={styles.zoneMicro}>
           {!enEnregistrement ? (
-            <button type="button" onClick={lancerEnregistrement} style={styles.btnMicro}>🔴 Commencer l'enregistrement</button>
+            <button type="button" onClick={lancerEnregistrement} style={styles.btnMicro}>🔴 Commencer</button>
           ) : (
-            <button type="button" onClick={arreterEnregistrement} style={styles.btnMicroStop}>🛑 Arrêter le micro</button>
+            <button type="button" onClick={arreterEnregistrement} style={styles.btnMicroStop}>🛑 Arrêter</button>
           )}
-          {enEnregistrement && <span style={styles.clignotant}>🎙️ Captation audio en cours...</span>}
+          {enEnregistrement && <span style={styles.clignotant}>🎙️ Captation active...</span>}
         </div>
 
         {audioUrlLocal && (
           <div style={styles.zoneReecoute}>
-            <span style={{ fontSize: '0.85rem', color: '#555' }}>🎧 Vérification de votre enregistrement :</span>
-            <button type="button" onClick={() => new Audio(audioUrlLocal).play()} style={styles.btnLocalAudio}>▶️ Écouter ma voix</button>
+            <button type="button" onClick={() => new Audio(audioUrlLocal).play()} style={styles.btnLocalAudio}>▶️ Réécouter l'enregistrement</button>
           </div>
         )}
 
         <button type="submit" disabled={chargement || enEnregistrement} style={styles.btnSubmit}>
-          {chargement ? "Envoi simultané des données & de l'audio..." : "📤 Finaliser et Envoyer au Drive"}
+          {chargement ? "Envoi en cours..." : "📤 Finaliser et Envoyer au Drive"}
         </button>
       </form>
     </div>
@@ -213,24 +210,25 @@ function App() {
 }
 
 const styles = {
-  container: { fontFamily: 'sans-serif', maxWidth: '700px', margin: '0 auto', padding: '20px' },
+  container: { fontFamily: 'sans-serif', maxWidth: '650px', margin: '0 auto', padding: '20px' },
   header: { textAlign: 'center', marginBottom: '15px' },
-  titre: { color: '#002F6C', margin: 0, fontSize: '2rem' },
-  sousTitre: { color: '#008751', fontSize: '0.9rem', fontWeight: 'bold' },
-  btnCsv: { display: 'inline-block', backgroundColor: '#002F6C', color: 'white', padding: '8px 12px', borderRadius: '5px', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.85rem' },
-  formulaire: { backgroundColor: '#fff', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', gap: '10px', border: '1px solid #ddd' },
+  titre: { color: '#002F6C', margin: 0 },
+  sousTitre: { color: '#008751', margin: 0, fontSize: '0.85rem', fontWeight: 'bold' },
+  btnCsv: { display: 'inline-block', backgroundColor: '#008751', color: 'white', padding: '8px 12px', borderRadius: '5px', textDecoration: 'none', fontWeight: 'bold', fontSize: '0.85rem' },
+  formulaire: { backgroundColor: '#fff', padding: '20px', borderRadius: '8px', boxShadow: '0 2px 8px rgba(0,0,0,0.1)', display: 'flex', flexDirection: 'column', gap: '12px', border: '1px solid #ddd' },
   row: { display: 'flex', gap: '15px' },
-  label: { fontWeight: 'bold', fontSize: '0.85rem', color: '#333' },
-  input: { padding: '8px', borderRadius: '5px', border: '1px solid #ccc', width: '100%', boxSizing: 'border-box', fontSize: '0.9rem' },
-  zoneTexteWolof: { backgroundColor: '#FFF9C4', padding: '15px', borderRadius: '6px', border: '2px dashed #FBC02D', textAlign: 'center', marginTop: '10px' },
-  texteWolofStyle: { color: '#002F6C', margin: 0, fontSize: '1.4rem', fontStyle: 'italic', fontWeight: 'bold' },
+  label: { fontWeight: 'bold', fontSize: '0.85rem', color: '#333', marginBottom: '4px', display: 'block' },
+  input: { padding: '8px', borderRadius: '5px', border: '1px solid #ccc', width: '100%', boxSizing: 'border-box' },
+  zoneTranscription: { backgroundColor: '#f9f9f9', padding: '12px', borderRadius: '6px', border: '1px solid #eee' },
+  encadreLecture: { backgroundColor: '#FFF9C4', padding: '12px', borderRadius: '5px', border: '1px dashed #FBC02D', textAlign: 'center' },
+  textarea: { width: '100%', padding: '8px', borderRadius: '5px', border: '1px solid #ccc', boxSizing: 'border-box', fontFamily: 'sans-serif', fontSize: '0.9rem' },
   zoneMicro: { display: 'flex', alignItems: 'center', gap: '15px' },
-  btnMicro: { backgroundColor: '#D32F2F', color: 'white', border: 'none', padding: '10px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' },
-  btnMicroStop: { backgroundColor: '#333', color: 'white', border: 'none', padding: '10px 15px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' },
+  btnMicro: { backgroundColor: '#D32F2F', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' },
+  btnMicroStop: { backgroundColor: '#333', color: 'white', border: 'none', padding: '8px 12px', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold' },
   clignotant: { color: '#D32F2F', fontWeight: 'bold', fontSize: '0.85rem' },
-  zoneReecoute: { backgroundColor: '#F5F5F5', padding: '8px', borderRadius: '5px', display: 'flex', flexDirection: 'column', gap: '5px' },
-  btnLocalAudio: { backgroundColor: '#002F6C', color: 'white', border: 'none', padding: '6px', borderRadius: '4px', cursor: 'pointer', fontSize: '0.85rem' },
-  btnSubmit: { backgroundColor: '#008751', color: '#fff', padding: '12px', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1rem', marginTop: '10px' }
+  zoneReecoute: { backgroundColor: '#eee', padding: '6px', borderRadius: '4px' },
+  btnLocalAudio: { backgroundColor: '#002F6C', color: 'white', border: 'none', padding: '6px w0px', borderRadius: '4px', cursor: 'pointer', width: '100%', fontSize: '0.85rem' },
+  btnSubmit: { backgroundColor: '#002F6C', color: '#fff', padding: '12px', border: 'none', borderRadius: '5px', cursor: 'pointer', fontWeight: 'bold', fontSize: '1rem' }
 };
 
 export default App;
