@@ -10,7 +10,7 @@ function App() {
   const [typeParole, setTypeParole] = useState('');
   const [transcription, setTranscription] = useState('');
   
-  // États pour le micro / audio
+  // États pour la gestion du micro
   const [enTrainDEnregistrer, setEnTrainDEnregistrer] = useState(false);
   const [audioBlob, setAudioBlob] = useState(null);
   const [audioUrl, setAudioUrl] = useState(null);
@@ -19,7 +19,7 @@ function App() {
   const mediaRecorderRef = useRef(null);
   const audioChunksRef = useRef([]);
 
-  // 🎤 Fonction pour démarrer l'enregistrement au micro
+  // 🎤 Démarrer l'enregistrement vocal
   const demarrerEnregistrement = async () => {
     audioChunksRef.current = [];
     try {
@@ -33,23 +33,23 @@ function App() {
       };
 
       mediaRecorderRef.current.onstop = () => {
-        const audioBlobExistant = new Blob(audioChunksRef.current, { type: 'audio/wav' });
-        setAudioBlob(audioBlobExistant);
-        setAudioUrl(URL.createObjectURL(audioBlobExistant));
+        const audioBlobGenere = new Blob(audioChunksRef.current, { type: 'audio/wav' });
+        setAudioBlob(audioBlobGenere);
+        setAudioUrl(URL.createObjectURL(audioBlobGenere));
         
-        // Arrêter le micro proprement
+        // Fermer le micro proprement
         stream.getTracks().forEach(track => track.stop());
       };
 
       mediaRecorderRef.current.start();
       setEnTrainDEnregistrer(true);
     } catch (err) {
-      alert("Impossible d'accéder au micro. Veuillez autoriser le micro sur votre navigateur.");
+      alert("Erreur : Impossible d'accéder au micro. Veuillez autoriser le micro dans votre navigateur.");
       console.error(err);
     }
   };
 
-  // 🛑 Fonction pour arrêter l'enregistrement
+  // 🛑 Arrêter l'enregistrement vocal
   const arreterEnregistrement = () => {
     if (mediaRecorderRef.current && enTrainDEnregistrer) {
       mediaRecorderRef.current.stop();
@@ -57,7 +57,7 @@ function App() {
     }
   };
 
-  // 🚀 Envoi automatique au backend Render
+  // 🚀 Soumission automatique vers le serveur Render
   const soumettreFormulaire = async (e) => {
     e.preventDefault();
     if (!audioBlob) {
@@ -76,7 +76,7 @@ function App() {
     formData.append('type_parole', typeParole);
     formData.append('transcription', transcription);
     
-    // On transforme l'enregistrement du micro en fichier pour le backend
+    // Convertit le Blob du micro en fichier exploitable par ton backend Python
     formData.append('audioFile', audioBlob, `enregistrement_wolof_${Date.now()}.wav`);
 
     try {
@@ -87,12 +87,12 @@ function App() {
 
       if (!response.ok) {
         const errorText = await response.json();
-        throw new Error(errorText.detail || "Erreur d'envoi");
+        throw new Error(errorText.detail || "Erreur lors du transfert");
       }
 
-      alert("Félicitations ! Votre enregistrement vocal est bien dans le Google Drive ! Jërëjëf ! 🇸🇳");
+      alert("Félicitations ! Vos données et votre voix sont bien enregistrées dans Google Drive ! Jërëjëf ! 🇸🇳");
       
-      // Réinitialisation
+      // Réinitialisation complète du formulaire après succès
       setAge(''); setSexe(''); setRegion(''); setDepartement('');
       setAccent(''); setAlphabetisation(''); setTypeParole('');
       setTranscription(''); setAudioBlob(null); setAudioUrl(null);
@@ -104,64 +104,66 @@ function App() {
   };
 
   return (
-    <div style={{ maxWidth: '450px', margin: '30px auto', padding: '20px', fontFamily: 'sans-serif', border: '1px solid #ccc', borderRadius: '10px', backgroundColor: '#fff', boxShadow: '0px 4px 6px rgba(0,0,0,0.1)' }}>
-      <h2 style={{ textAlign: 'center', color: '#1b5e20', marginBottom: '5px' }}>Wakhin Wolof 🇸🇳</h2>
-      <p style={{ textAlign: 'center', fontSize: '13px', color: '#666', marginTop: '0' }}>Enregistrement direct pour thèse</p>
+    <div style={{ maxWidth: '460px', margin: '20px auto', padding: '20px', fontFamily: 'sans-serif', border: '1px solid #ccc', borderRadius: '10px', backgroundColor: '#ffffff', boxShadow: '0px 4px 10px rgba(0,0,0,0.05)' }}>
+      <h2 style={{ textAlign: 'center', color: '#1b5e20', margin: '0 0 5px 0' }}>Wakhin Wolof 🇸🇳</h2>
+      <p style={{ textAlign: 'center', fontSize: '13px', color: '#666', margin: '0 0 20px 0' }}>Collecte linguistique pour thèse de doctorat</p>
       
-      <form onSubmit={soumettreFormulaire} style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+      <form onSubmit={soumettreFormulaire} style={{ display: 'flex', flexDirection: 'column', gap: '14px' }}>
         
-        {/* Section Audio Direct / Micro */}
-        <div style={{ padding: '15px', background: '#f1f8e9', borderRadius: '8px', textAlign: 'center', border: '1px dashed #1b5e20' }}>
-          <h4 style={{ margin: '0 0 10px 0', color: '#1b5e20' }}>🎤 Votre Enregistrement Vocal</h4>
+        {/* BOÎTE DU MICRO ENREGISTREUR */}
+        <div style={{ padding: '15px', background: '#f1f8e9', borderRadius: '8px', textAlign: 'center', border: '1px dashed #2e7d32' }}>
+          <h4 style={{ margin: '0 0 12px 0', color: '#1b5e20' }}>Enregistrement de la voix</h4>
           
           {!enTrainDEnregistrer ? (
-            <button type="button" onClick={demarrerEnregistrement} style={{ padding: '10px 15px', background: '#2e7d32', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', marginRight: '5px' }}>
+            <button type="button" onClick={demarrerEnregistrement} style={{ padding: '10px 16px', background: '#2e7d32', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px' }}>
               🔴 Commencer à parler
             </button>
           ) : (
-            <button type="button" onClick={arreterEnregistrement} style={{ padding: '10px 15px', background: '#d32f2f', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer' }}>
+            <button type="button" onClick={arreterEnregistrement} style={{ padding: '10px 16px', background: '#d32f2f', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: 'pointer', fontSize: '14px' }}>
               ⬛ Arrêter l'enregistrement
             </button>
           )}
 
           {audioUrl && (
-            <div style={{ marginTop: '10px' }}>
-              <p style={{ fontSize: '12px', color: '#2e7d32', margin: '5px 0' }}>✓ Audio prêt ! Écoutez-vous :</p>
-              <audio src={audioUrl} controls style={{ width: '100%', height: '30px' }} />
+            <div style={{ marginTop: '12px' }}>
+              <p style={{ fontSize: '12px', color: '#2e7d32', margin: '4px 0', fontWeight: 'bold' }}>✓ Audio prêt à l'écoute :</p>
+              <audio src={audioUrl} controls style={{ width: '100%', height: '32px' }} />
             </div>
           )}
         </div>
 
-        <input type="number" placeholder="Votre Âge" value={age} onChange={e => setAge(e.target.value)} required style={{ padding: '8px' }} />
+        {/* CHAMPS METADONNÉES */}
+        <input type="number" placeholder="Âge" value={age} onChange={e => setAge(e.target.value)} required style={{ padding: '9px', borderRadius: '4px', border: '1px solid #ccc' }} />
         
-        <select value={sexe} onChange={e => setSexe(e.target.value)} required style={{ padding: '8px' }}>
-          <option value="">Sélectionnez votre Sexe</option>
+        <select value={sexe} onChange={e => setSexe(e.target.value)} required style={{ padding: '9px', borderRadius: '4px', border: '1px solid #ccc' }}>
+          <option value="">Sélectionnez le Sexe</option>
           <option value="M">Masculin</option>
           <option value="F">Féminin</option>
         </select>
         
-        <input type="text" placeholder="Région d'origine" value={region} onChange={e => setRegion(e.target.value)} required style={{ padding: '8px' }} />
-        <input type="text" placeholder="Département" value={departement} onChange={e => setDepartement(e.target.value)} required style={{ padding: '8px' }} />
-        <input type="text" placeholder="Accent (ex: Baol-Baol, Saloum-Saloum...)" value={accent} onChange={e => setAccent(e.target.value)} required style={{ padding: '8px' }} />
+        <input type="text" placeholder="Région d'origine" value={region} onChange={e => setRegion(e.target.value)} required style={{ padding: '9px', borderRadius: '4px', border: '1px solid #ccc' }} />
+        <input type="text" placeholder="Département actuel" value={departement} onChange={e => setDepartement(e.target.value)} required style={{ padding: '9px', borderRadius: '4px', border: '1px solid #ccc' }} />
+        <input type="text" placeholder="Accent (ex: Baol-Baol, Saloum-Saloum...)" value={accent} onChange={e => setAccent(e.target.value)} required style={{ padding: '9px', borderRadius: '4px', border: '1px solid #ccc' }} />
         
-        {/* Choix d'alphabétisation */}
-        <select value={alphabetisation} onChange={e => setAlphabetisation(e.target.value)} required style={{ padding: '8px' }}>
+        {/* CHOIX CRUCIAL 1: ALPHABÉTISATION */}
+        <select value={alphabetisation} onChange={e => setAlphabetisation(e.target.value)} required style={{ padding: '9px', borderRadius: '4px', border: '1px solid #ccc' }}>
           <option value="">Savez-vous LIRE et ÉCRIRE le Wolof ?</option>
-          <option value="Oui">Oui, je sais lire et écrire le Wolof</option>
-          <option value="Non">Non, je le parle uniquement</option>
+          <option value="Oui">Oui (Sait lire et écrire)</option>
+          <option value="Non">Non (Parle uniquement / Analphabète)</option>
         </select>
 
-        {/* Choix du type de texte enregistré */}
-        <select value={typeParole} onChange={e => setTypeParole(e.target.value)} required style={{ padding: '8px' }}>
-          <option value="">L'audio que vous venez de faire est-il...</option>
-          <option value="Texte lu">Un texte que vous étiez en train de LIRE</option>
-          <option value="Parole spontanee">Une parole SPONTANÉE (vous parlez librement)</option>
+        {/* CHOIX CRUCIAL 2: TYPE DE TEXTE */}
+        <select value={typeParole} onChange={e => setTypeParole(e.target.value)} required style={{ padding: '9px', borderRadius: '4px', border: '1px solid #ccc' }}>
+          <option value="">L'audio produit est...</option>
+          <option value="Texte lu">Un texte lu</option>
+          <option value="Parole spontanee">Une parole spontanée</option>
         </select>
 
-        <textarea placeholder="Écrivez ou collez le texte qui est dit dans votre audio..." value={transcription} onChange={e => setTranscription(e.target.value)} required style={{ padding: '8px', height: '60px' }} />
+        <textarea placeholder="Veuillez transcrire ou coller le texte exact de votre audio ici..." value={transcription} onChange={e => setTranscription(e.target.value)} required style={{ padding: '9px', height: '65px', borderRadius: '4px', border: '1px solid #ccc', resize: 'vertical' }} />
 
-        <button type="submit" disabled={chargement || !audioBlob} style={{ padding: '12px', background: audioBlob ? '#1b5e20' : '#ccc', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: audioBlob ? 'pointer' : 'not-allowed', fontSize: '15px' }}>
-          {chargement ? "Envoi direct vers Google Drive en cours..." : "Envoyer ma voix"}
+        {/* BOUTON D'ACTION PRINCIPAL */}
+        <button type="submit" disabled={chargement || !audioBlob} style={{ padding: '12px', background: audioBlob ? '#1b5e20' : '#ccc', color: 'white', border: 'none', borderRadius: '5px', fontWeight: 'bold', cursor: audioBlob ? 'pointer' : 'not-allowed', fontSize: '15px', transition: 'background 0.3s' }}>
+          {chargement ? "Envoi direct sur Google Drive..." : "Envoyer ma contribution"}
         </button>
       </form>
     </div>
