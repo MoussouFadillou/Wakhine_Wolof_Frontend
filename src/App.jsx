@@ -47,7 +47,7 @@ function App() {
   // Chargement de l'aperçu du corpus depuis le backend
   const chargerContributions = async () => {
     try {
-      const reponse = await fetch(`${RENDER_URL}/api/contributions`);
+      const reponse = await fetch(`${`$"https://wakhine-wolof-1.onrender.com/api/contribuer`);
       if (reponse.ok) {
         const donnees = await reponse.json();
         setContributions(donnees);
