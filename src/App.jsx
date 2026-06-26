@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 
 // ⚠️ METS TON LIEN RENDER DU BACKEND ICI (SANS LE SLASH À LA FIN)
-const RENDER_URL = "https://ton-projet-backend.onrender.com"; 
+const RENDER_URL = "https://wakhine-wolof-1.onrender.com/"; 
 
 // 🇸🇳 Corpus de phrases Wolof prédéfinies pour la Parole Lue
 const PHRASES_WOLOF = [
