@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 
-// 🇸🇳 Ton URL Render officielle (sans slash à la fin)
-const RENDER_URL = "https://wakhine-wolof-1.onrender.com"; 
+// 🇸🇳 Ton URL Railway officielle (Remplace avec ton vrai sous-domaine .up.railway.app généré sur Railway)
+const BACKEND_URL = "wakhine-wolof-production.up.railway.app"; 
 
 const PHRASES_WOLOF = [
   "Ndakaaru laa dëkk, waaye Ndar laa juddoo.",
@@ -75,7 +75,7 @@ function App() {
 
     setChargement(true);
     const formData = new FormData();
-    formData.append("age", parseInt(age));
+    formData.append("age", parseInt(age, 10));
     formData.append("sexe", sexe);
     formData.append("region", region);
     formData.append("departement", departement);
@@ -85,8 +85,8 @@ function App() {
     formData.append("transcription", transcription); 
     formData.append("audioFile", audioBlob, `audio_wolof_${Date.now()}.wav`);
 
-    try {
-      const reponse = await fetch(`${RENDER_URL}/api/contribuer`, { method: "POST", body: formData });
+  try {
+      const reponse = await fetch(`${BACKEND_URL}/api/contribuer`, { method: "POST", body: formData });
       if (reponse.ok) {
         setAge(""); setSexe(""); setRegion(""); setDepartement(""); setAccent(""); setAlphabetisation(""); setTypeParole(""); setTranscription("");
         setAudioBlob(null); setAudioUrlLocal("");
@@ -96,7 +96,7 @@ function App() {
         alert(`Erreur : ${errData.detail || "Impossible de sauvegarder."}`);
       }
     } catch (err) {
-      alert("Le serveur backend ne répond pas. Vérifiez que Render est bien actif.");
+      alert("Le serveur backend ne répond pas. Vérifiez que votre application Railway est bien démarrée et active.");
     } finally {
       setChargement(false);
     }
@@ -110,7 +110,7 @@ function App() {
       </header>
 
       <div style={{ textAlign: 'right', marginBottom: '15px' }}>
-        <a href={`${RENDER_URL}/api/contributions/csv`} target="_blank" rel="noreferrer" style={styles.btnCsv}>
+        <a href={`${BACKEND_URL}/api/contributions/csv`} target="_blank" rel="noreferrer" style={styles.btnCsv}>
           📥 Télécharger la Base Globale (CSV pour Excel)
         </a>
       </div>
