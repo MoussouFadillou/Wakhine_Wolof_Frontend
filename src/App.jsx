@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 
 // 🇸🇳 Ton URL Railway officielle (Remplace avec ton vrai sous-domaine .up.railway.app généré sur Railway)
-const BACKEND_URL = "wakhine-wolof-production.up.railway.app"; 
+const BACKEND_URL = "https://wakhine-wolof-production.up.railway.app"; 
 
 const PHRASES_WOLOF = [
   "Ndakaaru laa dëkk, waaye Ndar laa juddoo.",
