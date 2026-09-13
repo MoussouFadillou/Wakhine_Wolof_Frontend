@@ -9,7 +9,7 @@ import React, { useEffect, useRef, useState } from "react";
 
 const BACKEND_URL =
   import.meta.env.VITE_BACKEND_URL ||
-  "https://wakhine-wolof.onrender.com/";
+  "https://wakhine-wolof.onrender.com";
 
 /*
 |--------------------------------------------------------------------------
