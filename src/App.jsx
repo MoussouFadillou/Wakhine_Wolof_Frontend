@@ -1,45 +1,41 @@
-
 import React, { useEffect, useRef, useState } from "react";
 
-/*
-|--------------------------------------------------------------------------
-| CONFIGURATION
-|--------------------------------------------------------------------------
-*/
+
+// ============================================================
+// BACKEND
+// ============================================================
 
 const BACKEND_URL =
   import.meta.env.VITE_BACKEND_URL ||
   "https://wakhine-wolof.onrender.com";
 
-/*
-|--------------------------------------------------------------------------
-| PHRASES WOLOF
-|--------------------------------------------------------------------------
-*/
+
+// ============================================================
+// PHRASES WOLOF
+// ============================================================
 
 const PHRASES_WOLOF = [
-  "Ndakaaru laa dëkk, waaye Ndar laa juddoo.",
-  "Xale yi bëgg nañu jàng wolof ci jalloré bi.",
-  "Sama jëwriñ jox na ma téere bu am solo.",
-  "Jërëjëf ci li nga ma jàppale tey ci suba.",
-  "Cees am na ay kër yooxu yaatu lool.",
-  "Dama bëgg jàng Wolof ngir gën a xam sama làkk.",
-  "Nit ku baax dafay dimbali nit ñi ci soxla.",
-  "Tey ma dem marché ngir jënd lekk.",
+  "Ma ngi dem",
+  "Naka nga def",
+  "Jërëjëf",
+  "Salaam aleekum",
+  "Ana waa kër gi",
+  "Dama bëgg Wolof",
+  "Fan nga dëkk",
+  "Mangi fi rekk",
+  "Yalla na la Yalla fay",
+  "Suba si dinañu jàng",
 ];
 
-/*
-|--------------------------------------------------------------------------
-| COMPOSANT PRINCIPAL
-|--------------------------------------------------------------------------
-*/
+
+// ============================================================
+// APPLICATION
+// ============================================================
 
 function App() {
-  /*
-  |--------------------------------------------------------------------------
-  | ÉTATS - FORMULAIRE
-  |--------------------------------------------------------------------------
-  */
+  // ----------------------------------------------------------
+  // Formulaire
+  // ----------------------------------------------------------
 
   const [age, setAge] = useState("");
   const [sexe, setSexe] = useState("");
@@ -50,255 +46,203 @@ function App() {
   const [typeParole, setTypeParole] = useState("");
   const [transcription, setTranscription] = useState("");
 
-  /*
-  |--------------------------------------------------------------------------
-  | ÉTATS - AUDIO
-  |--------------------------------------------------------------------------
-  */
+  // ----------------------------------------------------------
+  // Audio
+  // ----------------------------------------------------------
 
-  const [enEnregistrement, setEnEnregistrement] = useState(false);
   const [audioBlob, setAudioBlob] = useState(null);
   const [audioUrlLocal, setAudioUrlLocal] = useState("");
-  const [duree, setDuree] = useState(0);
+  const [isRecording, setIsRecording] = useState(false);
+  const [duration, setDuration] = useState(0);
 
   const mediaRecorderRef = useRef(null);
   const streamRef = useRef(null);
-  const chunksRef = useRef([]);
+  const audioChunksRef = useRef([]);
   const timerRef = useRef(null);
 
-  /*
-  |--------------------------------------------------------------------------
-  | ÉTATS - ENVOI
-  |--------------------------------------------------------------------------
-  */
+  // ----------------------------------------------------------
+  // Interface
+  // ----------------------------------------------------------
 
   const [chargement, setChargement] = useState(false);
   const [message, setMessage] = useState("");
   const [erreur, setErreur] = useState("");
 
-  /*
-  |--------------------------------------------------------------------------
-  | PHRASE ALÉATOIRE
-  |--------------------------------------------------------------------------
-  */
+  const [phraseActuelle, setPhraseActuelle] = useState(
+    PHRASES_WOLOF[0]
+  );
 
-  useEffect(() => {
-    if (typeParole === "Parole lue (Texte proposé)") {
-      const index = Math.floor(
-        Math.random() * PHRASES_WOLOF.length
-      );
 
-      setTranscription(PHRASES_WOLOF[index]);
-    } else if (
-      typeParole === "Parole spontanée (Description d'image)"
-    ) {
-      setTranscription("");
-    }
-  }, [typeParole]);
-
-  /*
-  |--------------------------------------------------------------------------
-  | NETTOYAGE AUDIO
-  |--------------------------------------------------------------------------
-  */
+  // ==========================================================
+  // NETTOYAGE
+  // ==========================================================
 
   useEffect(() => {
     return () => {
-      if (audioUrlLocal) {
-        URL.revokeObjectURL(audioUrlLocal);
-      }
-
-      if (timerRef.current) {
-        clearInterval(timerRef.current);
-      }
+      stopTimer();
 
       if (streamRef.current) {
-        streamRef.current.getTracks().forEach((track) => {
-          track.stop();
-        });
+        streamRef.current
+          .getTracks()
+          .forEach((track) => track.stop());
+      }
+
+      if (audioUrlLocal) {
+        URL.revokeObjectURL(audioUrlLocal);
       }
     };
   }, [audioUrlLocal]);
 
-  /*
-  |--------------------------------------------------------------------------
-  | FORMAT DURÉE
-  |--------------------------------------------------------------------------
-  */
 
-  const formaterDuree = (secondes) => {
-    const minutes = Math.floor(secondes / 60);
-    const secondesRestantes = secondes % 60;
+  // ==========================================================
+  // TIMER
+  // ==========================================================
+
+  const startTimer = () => {
+    stopTimer();
+
+    timerRef.current = setInterval(() => {
+      setDuration((previous) => previous + 1);
+    }, 1000);
+  };
+
+
+  const stopTimer = () => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current);
+      timerRef.current = null;
+    }
+  };
+
+
+  const formatDuration = (seconds) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = seconds % 60;
 
     return `${String(minutes).padStart(2, "0")}:${String(
-      secondesRestantes
+      remainingSeconds
     ).padStart(2, "0")}`;
   };
 
-  /*
-  |--------------------------------------------------------------------------
-  | DÉMARRER ENREGISTREMENT
-  |--------------------------------------------------------------------------
-  */
 
-  const lancerEnregistrement = async () => {
+  // ==========================================================
+  // CHOISIR UNE PHRASE
+  // ==========================================================
+
+  const nouvellePhrase = () => {
+    const index = Math.floor(
+      Math.random() * PHRASES_WOLOF.length
+    );
+
+    setPhraseActuelle(PHRASES_WOLOF[index]);
+  };
+
+
+  // ==========================================================
+  // DEMARRER ENREGISTREMENT
+  // ==========================================================
+
+  const startRecording = async () => {
     setErreur("");
     setMessage("");
 
     try {
       if (!navigator.mediaDevices?.getUserMedia) {
-        setErreur(
-          "Votre navigateur ne permet pas l'accès au microphone."
+        throw new Error(
+          "Votre navigateur ne permet pas l'enregistrement audio."
         );
-        return;
       }
 
       const stream =
         await navigator.mediaDevices.getUserMedia({
-          audio: {
-            echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true,
-          },
+          audio: true,
         });
 
       streamRef.current = stream;
 
-      /*
-      |--------------------------------------------------------------------------
-      | Détection du format audio disponible
-      |--------------------------------------------------------------------------
-      */
-
       let mimeType = "";
 
-      if (
-        MediaRecorder.isTypeSupported(
-          "audio/webm;codecs=opus"
-        )
-      ) {
-        mimeType = "audio/webm;codecs=opus";
-      } else if (
-        MediaRecorder.isTypeSupported("audio/webm")
-      ) {
-        mimeType = "audio/webm";
-      } else if (
-        MediaRecorder.isTypeSupported("audio/ogg;codecs=opus")
-      ) {
-        mimeType = "audio/ogg;codecs=opus";
+      const formats = [
+        "audio/webm;codecs=opus",
+        "audio/webm",
+        "audio/ogg;codecs=opus",
+      ];
+
+      for (const format of formats) {
+        if (
+          typeof MediaRecorder !== "undefined" &&
+          MediaRecorder.isTypeSupported(format)
+        ) {
+          mimeType = format;
+          break;
+        }
       }
 
-      const options = mimeType ? { mimeType } : undefined;
-
-      const recorder = new MediaRecorder(
-        stream,
-        options
-      );
+      const recorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream);
 
       mediaRecorderRef.current = recorder;
-
-      chunksRef.current = [];
-      setDuree(0);
-      setAudioBlob(null);
-      setAudioUrlLocal("");
-      setEnEnregistrement(true);
-
-      /*
-      |--------------------------------------------------------------------------
-      | Données audio
-      |--------------------------------------------------------------------------
-      */
+      audioChunksRef.current = [];
 
       recorder.ondataavailable = (event) => {
         if (event.data && event.data.size > 0) {
-          chunksRef.current.push(event.data);
+          audioChunksRef.current.push(event.data);
         }
       };
 
-      /*
-      |--------------------------------------------------------------------------
-      | Fin de l'enregistrement
-      |--------------------------------------------------------------------------
-      */
-
       recorder.onstop = () => {
-        const typeFinal =
+        const finalType =
           recorder.mimeType || "audio/webm";
 
         const blob = new Blob(
-          chunksRef.current,
+          audioChunksRef.current,
           {
-            type: typeFinal,
+            type: finalType,
           }
         );
 
-        if (blob.size === 0) {
-          setErreur(
-            "L'enregistrement audio est vide."
-          );
-          return;
-        }
-
         setAudioBlob(blob);
 
-        const url =
-          URL.createObjectURL(blob);
+        if (audioUrlLocal) {
+          URL.revokeObjectURL(audioUrlLocal);
+        }
 
-        setAudioUrlLocal(url);
+        const localUrl = URL.createObjectURL(blob);
 
-        chunksRef.current = [];
+        setAudioUrlLocal(localUrl);
+
+        if (streamRef.current) {
+          streamRef.current
+            .getTracks()
+            .forEach((track) => track.stop());
+
+          streamRef.current = null;
+        }
       };
 
-      recorder.onerror = () => {
-        setErreur(
-          "Une erreur est survenue pendant l'enregistrement."
-        );
+      recorder.start();
 
-        setEnEnregistrement(false);
-      };
+      setDuration(0);
+      setIsRecording(true);
+      startTimer();
 
-      /*
-      |--------------------------------------------------------------------------
-      | Démarrage
-      |--------------------------------------------------------------------------
-      */
-
-      recorder.start(1000);
-
-      /*
-      |--------------------------------------------------------------------------
-      | Chronomètre
-      |--------------------------------------------------------------------------
-      */
-
-      timerRef.current = setInterval(() => {
-        setDuree((ancienneDuree) => {
-          return ancienneDuree + 1;
-        });
-      }, 1000);
     } catch (error) {
-      console.error(
-        "Erreur microphone :",
-        error
-      );
-
-      setEnEnregistrement(false);
+      console.error(error);
 
       setErreur(
-        "Impossible d'accéder au microphone. Vérifiez les permissions de votre navigateur."
+        "Impossible d'accéder au microphone. Vérifiez les autorisations du navigateur."
       );
     }
   };
 
-  /*
-  |--------------------------------------------------------------------------
-  | ARRÊTER ENREGISTREMENT
-  |--------------------------------------------------------------------------
-  */
 
-  const arreterEnregistrement = () => {
-    const recorder =
-      mediaRecorderRef.current;
+  // ==========================================================
+  // ARRÊTER ENREGISTREMENT
+  // ==========================================================
+
+  const stopRecording = () => {
+    const recorder = mediaRecorderRef.current;
 
     if (
       recorder &&
@@ -307,54 +251,36 @@ function App() {
       recorder.stop();
     }
 
-    if (streamRef.current) {
-      streamRef.current
-        .getTracks()
-        .forEach((track) => {
-          track.stop();
-        });
-
-      streamRef.current = null;
-    }
-
-    if (timerRef.current) {
-      clearInterval(timerRef.current);
-      timerRef.current = null;
-    }
-
-    setEnEnregistrement(false);
+    stopTimer();
+    setIsRecording(false);
   };
 
-  /*
-  |--------------------------------------------------------------------------
-  | SUPPRIMER AUDIO
-  |--------------------------------------------------------------------------
-  */
 
-  const supprimerAudio = () => {
+  // ==========================================================
+  // SUPPRIMER AUDIO
+  // ==========================================================
+
+  const deleteAudio = () => {
     if (audioUrlLocal) {
       URL.revokeObjectURL(audioUrlLocal);
     }
 
     setAudioBlob(null);
     setAudioUrlLocal("");
-    setDuree(0);
-    setMessage("");
-    setErreur("");
+    setDuration(0);
   };
 
-  /*
-  |--------------------------------------------------------------------------
-  | VALIDATION FORMULAIRE
-  |--------------------------------------------------------------------------
-  */
 
-  const validerFormulaire = () => {
+  // ==========================================================
+  // VALIDATION
+  // ==========================================================
+
+  const validateForm = () => {
     if (!age) {
-      return "Veuillez indiquer l'âge.";
+      return "Veuillez renseigner votre âge.";
     }
 
-    const ageNumber = parseInt(age, 10);
+    const ageNumber = Number(age);
 
     if (
       Number.isNaN(ageNumber) ||
@@ -368,16 +294,16 @@ function App() {
       return "Veuillez sélectionner le sexe.";
     }
 
-    if (!region.trim()) {
-      return "Veuillez indiquer la région.";
+    if (!region) {
+      return "Veuillez sélectionner la région.";
     }
 
     if (!departement.trim()) {
-      return "Veuillez indiquer le département.";
+      return "Veuillez renseigner le département.";
     }
 
     if (!accent.trim()) {
-      return "Veuillez indiquer l'accent régional.";
+      return "Veuillez renseigner l'accent.";
     }
 
     if (!alphabetisation) {
@@ -389,199 +315,117 @@ function App() {
     }
 
     if (!audioBlob) {
-      return "Veuillez enregistrer votre voix.";
+      return "Veuillez enregistrer un audio.";
     }
 
     return null;
   };
 
-  /*
-  |--------------------------------------------------------------------------
-  | ENVOYER CONTRIBUTION
-  |--------------------------------------------------------------------------
-  */
 
-  const envoyerDonnees = async (event) => {
+  // ==========================================================
+  // ENVOYER CONTRIBUTION
+  // ==========================================================
+
+  const handleSubmit = async (event) => {
     event.preventDefault();
 
     setMessage("");
     setErreur("");
 
-    const erreurValidation =
-      validerFormulaire();
+    const validationError = validateForm();
 
-    if (erreurValidation) {
-      setErreur(erreurValidation);
+    if (validationError) {
+      setErreur(validationError);
       return;
     }
 
     setChargement(true);
 
     try {
-      /*
-      |--------------------------------------------------------------------------
-      | FormData
-      |--------------------------------------------------------------------------
-      */
-
       const formData = new FormData();
 
       formData.append(
         "age",
-        String(parseInt(age, 10))
+        String(Number(age))
       );
 
-      formData.append(
-        "sexe",
-        sexe
-      );
-
-      formData.append(
-        "region",
-        region.trim()
-      );
-
+      formData.append("sexe", sexe);
+      formData.append("region", region);
       formData.append(
         "departement",
         departement.trim()
       );
-
       formData.append(
         "accent",
         accent.trim()
       );
-
       formData.append(
         "alphabetisation",
         alphabetisation
       );
-
       formData.append(
         "type_parole",
         typeParole
       );
-
       formData.append(
         "transcription",
         transcription.trim()
       );
-
-      /*
-      |--------------------------------------------------------------------------
-      | Nom du fichier
-      |--------------------------------------------------------------------------
-      */
-
-      const timestamp =
-        Date.now();
 
       const extension =
         audioBlob.type.includes("ogg")
           ? "ogg"
           : "webm";
 
-      const nomFichier =
-        `wolof_${region
-          .trim()
-          .replace(/\s+/g, "_")}_${timestamp}.${extension}`;
-
-      /*
-      |--------------------------------------------------------------------------
-      | Audio
-      |--------------------------------------------------------------------------
-      */
-
       formData.append(
         "audioFile",
         audioBlob,
-        nomFichier
+        `wolof_${Date.now()}.${extension}`
       );
+
 
       /*
       |--------------------------------------------------------------------------
-      | Requête vers FastAPI Railway
+      | Requête vers FastAPI Render
       |--------------------------------------------------------------------------
       */
 
-      const url =
-        `${BACKEND_URL}/api/contribuer`;
-
-      console.log(
-        "Envoi vers :",
-        url
-      );
-
-      const response =
-        await fetch(url, {
+      const response = await fetch(
+        `${BACKEND_URL}/api/contribuer`,
+        {
           method: "POST",
           body: formData,
-        });
-
-      /*
-      |--------------------------------------------------------------------------
-      | Lecture réponse serveur
-      |--------------------------------------------------------------------------
-      */
-
-      let data = null;
-
-      const contentType =
-        response.headers.get(
-          "content-type"
-        ) || "";
-
-      if (
-        contentType.includes(
-          "application/json"
-        )
-      ) {
-        data =
-          await response.json();
-      } else {
-        const text =
-          await response.text();
-
-        data = {
-          detail: text,
-        };
-      }
-
-      console.log(
-        "Réponse backend :",
-        response.status,
-        data
+        }
       );
 
-      /*
-      |--------------------------------------------------------------------------
-      | Erreur HTTP
-      |--------------------------------------------------------------------------
-      */
+
+      let result = null;
+
+      try {
+        result = await response.json();
+      } catch {
+        result = null;
+      }
+
 
       if (!response.ok) {
-        throw new Error(
-          data?.detail ||
-            `Erreur serveur HTTP ${response.status}`
-        );
+        const detail =
+          result?.detail ||
+          `Erreur serveur (${response.status})`;
+
+        throw new Error(detail);
       }
 
-      /*
-      |--------------------------------------------------------------------------
-      | SUCCÈS
-      |--------------------------------------------------------------------------
-      */
+
+      // ------------------------------------------------------
+      // Succès
+      // ------------------------------------------------------
 
       setMessage(
-        data?.message ||
-          "Contribution enregistrée avec succès."
+        "Votre contribution a été enregistrée avec succès. Merci !"
       );
 
-      /*
-      |--------------------------------------------------------------------------
-      | Réinitialisation formulaire
-      |--------------------------------------------------------------------------
-      */
-
+      // Réinitialisation
       setAge("");
       setSexe("");
       setRegion("");
@@ -591,914 +435,717 @@ function App() {
       setTypeParole("");
       setTranscription("");
 
-      supprimerAudio();
+      deleteAudio();
 
-      /*
-      |--------------------------------------------------------------------------
-      | Retour haut de page
-      |--------------------------------------------------------------------------
-      */
-
-      window.scrollTo({
-        top: 0,
-        behavior: "smooth",
-      });
     } catch (error) {
       console.error(
-        "Erreur envoi contribution :",
+        "Erreur contribution :",
         error
       );
 
       setErreur(
-        error?.message ||
-          "Impossible de contacter le serveur."
+        error.message ||
+        "Impossible de contacter le backend Render."
       );
+
     } finally {
       setChargement(false);
     }
   };
 
-  /*
-  |--------------------------------------------------------------------------
-  | TEST BACKEND
-  |--------------------------------------------------------------------------
-  */
 
-  const testerBackend = async () => {
+  // ==========================================================
+  // TEST BACKEND
+  // ==========================================================
+
+  const testBackend = async () => {
     setErreur("");
     setMessage("");
 
     try {
-      const response =
-        await fetch(
-          `${BACKEND_URL}/health`
-        );
+      const response = await fetch(
+        `${BACKEND_URL}/health`
+      );
 
       if (!response.ok) {
         throw new Error(
-          `Backend HTTP ${response.status}`
+          `Backend inaccessible (${response.status})`
         );
       }
 
-      const data =
-        await response.json();
+      const data = await response.json();
 
       setMessage(
-        `Backend opérationnel : ${
-          data.service || "Wakhin Wolof API"
-        }`
-      );
-    } catch (error) {
-      console.error(
-        "Erreur backend :",
-        error
+        `Backend connecté : ${data.status}`
       );
 
+    } catch (error) {
+      console.error(error);
+
       setErreur(
-        "Impossible de contacter le backend Railway."
+        "Le serveur backend Render ne répond pas. Vérifiez le déploiement Render."
       );
     }
   };
 
-  /*
-  |--------------------------------------------------------------------------
-  | INTERFACE
-  |--------------------------------------------------------------------------
-  */
+
+  // ==========================================================
+  // INTERFACE
+  // ==========================================================
 
   return (
     <div style={styles.page}>
-      <header style={styles.header}>
-        <div style={styles.logoCircle}>
-          🇸🇳
-        </div>
 
-        <h1 style={styles.titre}>
-          Wakhin Wolof
-        </h1>
+      <div style={styles.container}>
 
-        <p style={styles.sousTitre}>
-          Portail d'acquisition linguistique
-        </p>
+        {/* ==================================================
+            HEADER
+        ================================================== */}
 
-        <p style={styles.description}>
-          Projet de collecte de données audio
-          et sociolinguistiques en Wolof
-        </p>
-      </header>
+        <header style={styles.header}>
 
-      {/* -------------------------------------------------- */}
-      {/* STATUT */}
-      {/* -------------------------------------------------- */}
+          <h1 style={styles.title}>
+            Wakhin Wolof 🇸🇳
+          </h1>
 
-      <div style={styles.statusContainer}>
-        <button
-          type="button"
-          onClick={testerBackend}
-          style={styles.btnStatus}
-        >
-          🔌 Tester le serveur
-        </button>
+          <p style={styles.subtitle}>
+            Portail de collecte de données linguistiques
+            pour la reconnaissance automatique de la parole
+            en wolof.
+          </p>
 
-        <a
-          href={`${BACKEND_URL}/docs`}
-          target="_blank"
-          rel="noreferrer"
-          style={styles.btnDocs}
-        >
-          📚 API
-        </a>
-
-        <a
-          href={`${BACKEND_URL}/api/contributions/csv`}
-          target="_blank"
-          rel="noreferrer"
-          style={styles.btnCsv}
-        >
-          📥 Télécharger CSV
-        </a>
-      </div>
-
-      {/* -------------------------------------------------- */}
-      {/* MESSAGES */}
-      {/* -------------------------------------------------- */}
-
-      {message && (
-        <div style={styles.messageSuccess}>
-          ✅ {message}
-        </div>
-      )}
-
-      {erreur && (
-        <div style={styles.messageError}>
-          ❌ {erreur}
-        </div>
-      )}
-
-      {/* -------------------------------------------------- */}
-      {/* FORMULAIRE */}
-      {/* -------------------------------------------------- */}
-
-      <form
-        onSubmit={envoyerDonnees}
-        style={styles.formulaire}
-      >
-        <div style={styles.sectionTitle}>
-          <span>📋</span>
-
-          <div>
-            <h2 style={styles.sectionTitleText}>
-              Informations de l'informateur
-            </h2>
-
-            <p style={styles.sectionDescription}>
-              Ces informations permettent
-              d'étudier les variations
-              sociolinguistiques du Wolof.
-            </p>
-          </div>
-        </div>
-
-        {/* ÂGE + SEXE */}
-
-        <div style={styles.row}>
-          <div style={styles.field}>
-            <label style={styles.label}>
-              Âge *
-            </label>
-
-            <input
-              type="number"
-              min="1"
-              max="120"
-              placeholder="Ex : 27"
-              value={age}
-              onChange={(e) =>
-                setAge(e.target.value)
-              }
-              style={styles.input}
-              disabled={chargement}
-            />
-          </div>
-
-          <div style={styles.field}>
-            <label style={styles.label}>
-              Sexe *
-            </label>
-
-            <select
-              value={sexe}
-              onChange={(e) =>
-                setSexe(e.target.value)
-              }
-              style={styles.input}
-              disabled={chargement}
-            >
-              <option value="">
-                -- Choisir --
-              </option>
-
-              <option value="Homme">
-                Homme
-              </option>
-
-              <option value="Femme">
-                Femme
-              </option>
-            </select>
-          </div>
-        </div>
-
-        {/* RÉGION + DÉPARTEMENT */}
-
-        <div style={styles.row}>
-          <div style={styles.field}>
-            <label style={styles.label}>
-              Région *
-            </label>
-
-            <input
-              type="text"
-              placeholder="Ex : Kaolack"
-              value={region}
-              onChange={(e) =>
-                setRegion(e.target.value)
-              }
-              style={styles.input}
-              disabled={chargement}
-            />
-          </div>
-
-          <div style={styles.field}>
-            <label style={styles.label}>
-              Département *
-            </label>
-
-            <input
-              type="text"
-              placeholder="Ex : Nioro"
-              value={departement}
-              onChange={(e) =>
-                setDepartement(e.target.value)
-              }
-              style={styles.input}
-              disabled={chargement}
-            />
-          </div>
-        </div>
-
-        {/* ACCENT */}
-
-        <div style={styles.field}>
-          <label style={styles.label}>
-            Accent régional dominant *
-          </label>
-
-          <input
-            type="text"
-            placeholder="Ex : Baol-Baol, Dakar, Ndar..."
-            value={accent}
-            onChange={(e) =>
-              setAccent(e.target.value)
-            }
-            style={styles.input}
-            disabled={chargement}
-          />
-        </div>
-
-        {/* ALPHABÉTISATION */}
-
-        <div style={styles.field}>
-          <label style={styles.label}>
-            Niveau d'alphabétisation *
-          </label>
-
-          <select
-            value={alphabetisation}
-            onChange={(e) =>
-              setAlphabetisation(
-                e.target.value
-              )
-            }
-            style={styles.input}
-            disabled={chargement}
+          <button
+            type="button"
+            onClick={testBackend}
+            style={styles.secondaryButton}
           >
-            <option value="">
-              -- Sélectionner --
-            </option>
+            Tester le serveur
+          </button>
 
-            <option value="Sait lire et écrire (Alphabet Officiel)">
-              Sait lire et écrire
-              (Alphabet officiel)
-            </option>
+        </header>
 
-            <option value="Sait lire et écrire (Wolofal / Arabe)">
-              Sait lire et écrire
-              (Wolofal / Arabe)
-            </option>
 
-            <option value="Non-alphabétisé en Wolof">
-              Non-alphabétisé en Wolof
-            </option>
-          </select>
-        </div>
+        {/* ==================================================
+            MESSAGES
+        ================================================== */}
 
-        {/* TYPE DE PAROLE */}
-
-        <div style={styles.field}>
-          <label style={styles.label}>
-            Type de parole *
-          </label>
-
-          <select
-            value={typeParole}
-            onChange={(e) =>
-              setTypeParole(
-                e.target.value
-              )
-            }
-            style={styles.input}
-            disabled={chargement}
-          >
-            <option value="">
-              -- Sélectionner --
-            </option>
-
-            <option value="Parole lue (Texte proposé)">
-              Parole lue
-              (Texte proposé)
-            </option>
-
-            <option value="Parole spontanée (Description d'image)">
-              Parole spontanée
-              (Description d'image)
-            </option>
-          </select>
-        </div>
-
-        {/* -------------------------------------------------- */}
-        {/* TRANSCRIPTION */}
-        {/* -------------------------------------------------- */}
-
-        {typeParole && (
-          <div style={styles.transcriptionBox}>
-            <label style={styles.label}>
-              📝 Transcription / Texte Wolof
-            </label>
-
-            {typeParole ===
-            "Parole lue (Texte proposé)" ? (
-              <>
-                <p style={styles.smallText}>
-                  Lisez naturellement la phrase
-                  affichée ci-dessous.
-                </p>
-
-                <div style={styles.phraseBox}>
-                  <span style={styles.quote}>
-                    «
-                  </span>
-
-                  <div style={styles.phrase}>
-                    {transcription}
-                  </div>
-
-                  <span style={styles.quote}>
-                    »
-                  </span>
-                </div>
-              </>
-            ) : (
-              <>
-                <p style={styles.smallText}>
-                  Décrivez librement l'image ou
-                  la situation proposée.
-                </p>
-
-                <textarea
-                  rows="4"
-                  placeholder="Écrivez ici la transcription si vous la connaissez..."
-                  value={transcription}
-                  onChange={(e) =>
-                    setTranscription(
-                      e.target.value
-                    )
-                  }
-                  style={styles.textarea}
-                  disabled={chargement}
-                />
-              </>
-            )}
+        {message && (
+          <div style={styles.success}>
+            {message}
           </div>
         )}
 
-        {/* -------------------------------------------------- */}
-        {/* AUDIO */}
-        {/* -------------------------------------------------- */}
+        {erreur && (
+          <div style={styles.error}>
+            {erreur}
+          </div>
+        )}
 
-        <div style={styles.audioSection}>
-          <div style={styles.sectionTitle}>
-            <span>🎙️</span>
 
-            <div>
-              <h2 style={styles.sectionTitleText}>
-                Enregistrement vocal
-              </h2>
+        {/* ==================================================
+            FORMULAIRE
+        ================================================== */}
 
-              <p style={styles.sectionDescription}>
-                Parlez naturellement en Wolof.
-              </p>
+        <form
+          onSubmit={handleSubmit}
+          style={styles.form}
+        >
+
+          {/* ------------------------------------------------
+              PHRASE
+          ------------------------------------------------ */}
+
+          <section style={styles.section}>
+
+            <h2 style={styles.sectionTitle}>
+              1. Phrase à prononcer
+            </h2>
+
+            <div style={styles.phraseBox}>
+              <strong>
+                {phraseActuelle}
+              </strong>
             </div>
-          </div>
 
-          <div style={styles.audioControls}>
-            {!enEnregistrement ? (
-              <button
-                type="button"
-                onClick={
-                  lancerEnregistrement
-                }
-                disabled={chargement}
-                style={styles.btnRecord}
-              >
-                🔴 Commencer
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={
-                  arreterEnregistrement
-                }
-                style={styles.btnStop}
-              >
-                🛑 Arrêter
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={nouvellePhrase}
+              style={styles.secondaryButton}
+            >
+              Changer de phrase
+            </button>
 
-            {enEnregistrement && (
-              <div style={styles.recordingStatus}>
-                <span
-                  style={
-                    styles.recordingDot
-                  }
+          </section>
+
+
+          {/* ------------------------------------------------
+              INFORMATIONS
+          ------------------------------------------------ */}
+
+          <section style={styles.section}>
+
+            <h2 style={styles.sectionTitle}>
+              2. Informations du locuteur
+            </h2>
+
+
+            <label style={styles.label}>
+              Âge
+              <input
+                type="number"
+                min="1"
+                max="120"
+                value={age}
+                onChange={(e) =>
+                  setAge(e.target.value)
+                }
+                style={styles.input}
+                required
+              />
+            </label>
+
+
+            <label style={styles.label}>
+              Sexe
+              <select
+                value={sexe}
+                onChange={(e) =>
+                  setSexe(e.target.value)
+                }
+                style={styles.input}
+                required
+              >
+                <option value="">
+                  Sélectionner
+                </option>
+                <option value="Homme">
+                  Homme
+                </option>
+                <option value="Femme">
+                  Femme
+                </option>
+                <option value="Autre">
+                  Autre
+                </option>
+              </select>
+            </label>
+
+
+            <label style={styles.label}>
+              Région
+              <select
+                value={region}
+                onChange={(e) =>
+                  setRegion(e.target.value)
+                }
+                style={styles.input}
+                required
+              >
+                <option value="">
+                  Sélectionner
+                </option>
+
+                <option value="Dakar">
+                  Dakar
+                </option>
+
+                <option value="Thiès">
+                  Thiès
+                </option>
+
+                <option value="Saint-Louis">
+                  Saint-Louis
+                </option>
+
+                <option value="Diourbel">
+                  Diourbel
+                </option>
+
+                <option value="Louga">
+                  Louga
+                </option>
+
+                <option value="Fatick">
+                  Fatick
+                </option>
+
+                <option value="Kaolack">
+                  Kaolack
+                </option>
+
+                <option value="Kaffrine">
+                  Kaffrine
+                </option>
+
+                <option value="Kédougou">
+                  Kédougou
+                </option>
+
+                <option value="Matam">
+                  Matam
+                </option>
+
+                <option value="Tambacounda">
+                  Tambacounda
+                </option>
+
+                <option value="Ziguinchor">
+                  Ziguinchor
+                </option>
+
+                <option value="Sédhiou">
+                  Sédhiou
+                </option>
+              </select>
+            </label>
+
+
+            <label style={styles.label}>
+              Département
+
+              <input
+                type="text"
+                value={departement}
+                onChange={(e) =>
+                  setDepartement(e.target.value)
+                }
+                placeholder="Ex. Mbour"
+                style={styles.input}
+                required
+              />
+            </label>
+
+
+            <label style={styles.label}>
+              Accent
+
+              <input
+                type="text"
+                value={accent}
+                onChange={(e) =>
+                  setAccent(e.target.value)
+                }
+                placeholder="Ex. Thiès"
+                style={styles.input}
+                required
+              />
+            </label>
+
+
+            <label style={styles.label}>
+              Alphabétisation
+
+              <select
+                value={alphabetisation}
+                onChange={(e) =>
+                  setAlphabetisation(e.target.value)
+                }
+                style={styles.input}
+                required
+              >
+                <option value="">
+                  Sélectionner
+                </option>
+
+                <option value="Non alphabétisé">
+                  Non alphabétisé
+                </option>
+
+                <option value="Primaire">
+                  Primaire
+                </option>
+
+                <option value="Secondaire">
+                  Secondaire
+                </option>
+
+                <option value="Supérieur">
+                  Supérieur
+                </option>
+              </select>
+            </label>
+
+
+            <label style={styles.label}>
+              Type de parole
+
+              <select
+                value={typeParole}
+                onChange={(e) =>
+                  setTypeParole(e.target.value)
+                }
+                style={styles.input}
+                required
+              >
+                <option value="">
+                  Sélectionner
+                </option>
+
+                <option value="Lecture">
+                  Lecture
+                </option>
+
+                <option value="Conversation">
+                  Conversation
+                </option>
+
+                <option value="Spontanée">
+                  Parole spontanée
+                </option>
+
+                <option value="Répétition">
+                  Répétition
+                </option>
+              </select>
+            </label>
+
+
+            <label style={styles.label}>
+              Transcription facultative
+
+              <textarea
+                value={transcription}
+                onChange={(e) =>
+                  setTranscription(e.target.value)
+                }
+                placeholder="Écrire la transcription si vous la connaissez..."
+                style={styles.textarea}
+                rows="4"
+              />
+            </label>
+
+          </section>
+
+
+          {/* ------------------------------------------------
+              AUDIO
+          ------------------------------------------------ */}
+
+          <section style={styles.section}>
+
+            <h2 style={styles.sectionTitle}>
+              3. Enregistrement audio
+            </h2>
+
+            <div style={styles.audioControls}>
+
+              {!isRecording ? (
+                <button
+                  type="button"
+                  onClick={startRecording}
+                  style={styles.recordButton}
+                >
+                  🎙️ Commencer
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={stopRecording}
+                  style={styles.stopButton}
+                >
+                  ⏹️ Arrêter
+                </button>
+              )}
+
+            </div>
+
+
+            <div style={styles.duration}>
+              Durée : {formatDuration(duration)}
+            </div>
+
+
+            {audioUrlLocal && (
+              <div style={styles.audioPreview}>
+
+                <audio
+                  controls
+                  src={audioUrlLocal}
+                  style={styles.audio}
                 />
-
-                <span>
-                  Enregistrement en cours...
-                </span>
-
-                <strong>
-                  {formaterDuree(duree)}
-                </strong>
-              </div>
-            )}
-          </div>
-
-          {/* AUDIO ENREGISTRÉ */}
-
-          {audioUrlLocal && (
-            <div style={styles.audioPreview}>
-              <div style={styles.audioHeader}>
-                <strong>
-                  🎧 Votre enregistrement
-                </strong>
 
                 <button
                   type="button"
-                  onClick={
-                    supprimerAudio
-                  }
-                  style={styles.btnDelete}
-                  disabled={chargement}
+                  onClick={deleteAudio}
+                  style={styles.deleteButton}
                 >
-                  🗑️ Supprimer
+                  Supprimer l'audio
                 </button>
+
               </div>
+            )}
 
-              <audio
-                src={audioUrlLocal}
-                controls
-                style={
-                  styles.audioPlayer
-                }
-              />
 
-              <p style={styles.audioInfo}>
-                Audio prêt à être envoyé vers
-                Railway → Google Drive.
-              </p>
-            </div>
-          )}
-        </div>
+            <p style={styles.audioInfo}>
+              Audio prêt à être envoyé vers le serveur
+              Render → Google Drive.
+            </p>
 
-        {/* -------------------------------------------------- */}
-        {/* ENVOI */}
-        {/* -------------------------------------------------- */}
+          </section>
 
-        <button
-          type="submit"
-          disabled={
-            chargement ||
-            enEnregistrement ||
-            !audioBlob
-          }
-          style={{
-            ...styles.btnSubmit,
 
-            backgroundColor:
-              chargement ||
-              enEnregistrement ||
-              !audioBlob
-                ? "#9ca3af"
-                : "#002f6c",
+          {/* ------------------------------------------------
+              SUBMIT
+          ------------------------------------------------ */}
 
-            cursor:
-              chargement ||
-              enEnregistrement ||
-              !audioBlob
-                ? "not-allowed"
-                : "pointer",
-          }}
-        >
-          {chargement ? (
-            <>
-              ⏳ Envoi en cours...
-            </>
-          ) : (
-            <>
-              📤 Valider et envoyer
-            </>
-          )}
-        </button>
+          <button
+            type="submit"
+            disabled={chargement || isRecording}
+            style={
+              chargement || isRecording
+                ? styles.disabledButton
+                : styles.submitButton
+            }
+          >
+            {chargement
+              ? "Envoi en cours..."
+              : "Envoyer ma contribution"}
+          </button>
 
-        <p style={styles.footerInfo}>
-          Les données sont envoyées de manière
-          sécurisée au serveur de collecte.
-          Les métadonnées sont enregistrées
-          dans PostgreSQL et l'audio est
-          sauvegardé dans Google Drive.
-        </p>
-      </form>
+        </form>
 
-      {/* -------------------------------------------------- */}
-      {/* PIED DE PAGE */}
-      {/* -------------------------------------------------- */}
 
-      <footer style={styles.footer}>
-        <strong>
-          Wakhin Wolof 🇸🇳
-        </strong>
+        {/* ==================================================
+            LIENS API
+        ================================================== */}
 
-        <span>
-          Projet de recherche en traitement
-          automatique de la parole
-        </span>
-      </footer>
+        <footer style={styles.footer}>
+
+          <a
+            href={`${BACKEND_URL}/docs`}
+            target="_blank"
+            rel="noreferrer"
+            style={styles.link}
+          >
+            Documentation API
+          </a>
+
+          {" · "}
+
+          <a
+            href={`${BACKEND_URL}/api/contributions/csv`}
+            target="_blank"
+            rel="noreferrer"
+            style={styles.link}
+          >
+            Télécharger le corpus CSV
+          </a>
+
+        </footer>
+
+      </div>
+
     </div>
   );
 }
 
-/*
-|--------------------------------------------------------------------------
-| STYLES
-|--------------------------------------------------------------------------
-*/
+
+// ============================================================
+// STYLES
+// ============================================================
 
 const styles = {
+
   page: {
     minHeight: "100vh",
-    background:
-      "linear-gradient(135deg, #f0fdf4 0%, #eff6ff 100%)",
-    fontFamily:
-      "Arial, Helvetica, sans-serif",
+    background: "#f4f7f9",
     padding: "30px 15px",
-    boxSizing: "border-box",
+    fontFamily: "Arial, sans-serif",
+  },
+
+  container: {
+    maxWidth: "850px",
+    margin: "0 auto",
   },
 
   header: {
-    maxWidth: "750px",
-    margin: "0 auto 25px",
+    background: "#ffffff",
+    padding: "30px",
+    borderRadius: "16px",
+    marginBottom: "20px",
     textAlign: "center",
   },
 
-  logoCircle: {
-    fontSize: "45px",
-    marginBottom: "5px",
+  title: {
+    margin: "0 0 10px",
+    fontSize: "32px",
   },
 
-  titre: {
-    color: "#002F6C",
-    fontSize: "42px",
-    margin: "0",
-    fontWeight: "800",
+  subtitle: {
+    color: "#555",
+    lineHeight: "1.6",
   },
 
-  sousTitre: {
-    color: "#008751",
-    fontSize: "18px",
-    fontWeight: "700",
-    margin: "8px 0 4px",
+  form: {
+    background: "#ffffff",
+    padding: "25px",
+    borderRadius: "16px",
   },
 
-  description: {
-    color: "#4b5563",
-    fontSize: "14px",
-    margin: "0",
-  },
-
-  statusContainer: {
-    maxWidth: "750px",
-    margin: "0 auto 18px",
-    display: "flex",
-    justifyContent: "flex-end",
-    gap: "8px",
-    flexWrap: "wrap",
-  },
-
-  btnStatus: {
-    border: "none",
-    backgroundColor: "#374151",
-    color: "#fff",
-    padding: "9px 13px",
-    borderRadius: "6px",
-    cursor: "pointer",
-    fontWeight: "600",
-  },
-
-  btnDocs: {
-    backgroundColor: "#2563eb",
-    color: "#fff",
-    padding: "9px 13px",
-    borderRadius: "6px",
-    textDecoration: "none",
-    fontWeight: "600",
-  },
-
-  btnCsv: {
-    backgroundColor: "#008751",
-    color: "#fff",
-    padding: "9px 13px",
-    borderRadius: "6px",
-    textDecoration: "none",
-    fontWeight: "700",
-  },
-
-  messageSuccess: {
-    maxWidth: "750px",
-    margin: "0 auto 15px",
-    backgroundColor: "#dcfce7",
-    color: "#166534",
-    border: "1px solid #86efac",
-    padding: "13px 15px",
-    borderRadius: "8px",
-    fontWeight: "600",
-  },
-
-  messageError: {
-    maxWidth: "750px",
-    margin: "0 auto 15px",
-    backgroundColor: "#fee2e2",
-    color: "#991b1b",
-    border: "1px solid #fca5a5",
-    padding: "13px 15px",
-    borderRadius: "8px",
-    fontWeight: "600",
-    wordBreak: "break-word",
-  },
-
-  formulaire: {
-    maxWidth: "750px",
-    margin: "0 auto",
-    backgroundColor: "#ffffff",
-    padding: "30px",
-    borderRadius: "14px",
-    boxShadow:
-      "0 10px 35px rgba(0,0,0,0.08)",
-    boxSizing: "border-box",
+  section: {
+    marginBottom: "30px",
+    paddingBottom: "25px",
+    borderBottom: "1px solid #ddd",
   },
 
   sectionTitle: {
-    display: "flex",
-    alignItems: "flex-start",
-    gap: "12px",
+    fontSize: "22px",
     marginBottom: "20px",
-  },
-
-  sectionTitleText: {
-    color: "#002F6C",
-    margin: "0",
-    fontSize: "20px",
-  },
-
-  sectionDescription: {
-    color: "#6b7280",
-    margin: "4px 0 0",
-    fontSize: "13px",
-    lineHeight: "1.5",
-  },
-
-  row: {
-    display: "flex",
-    gap: "16px",
-    marginBottom: "16px",
-  },
-
-  field: {
-    flex: 1,
-    display: "flex",
-    flexDirection: "column",
-    gap: "7px",
-    marginBottom: "16px",
   },
 
   label: {
-    color: "#374151",
-    fontSize: "14px",
-    fontWeight: "700",
-  },
-
-  input: {
-    width: "100%",
-    padding: "12px",
-    borderRadius: "7px",
-    border: "1px solid #d1d5db",
-    backgroundColor: "#fff",
-    fontSize: "14px",
-    boxSizing: "border-box",
-    outline: "none",
-  },
-
-  transcriptionBox: {
-    backgroundColor: "#f8fafc",
-    border: "1px solid #e2e8f0",
-    borderRadius: "9px",
-    padding: "18px",
-    marginBottom: "20px",
-  },
-
-  smallText: {
-    color: "#6b7280",
-    fontSize: "13px",
-    margin: "5px 0 12px",
-  },
-
-  phraseBox: {
-    backgroundColor: "#fff9c4",
-    border: "2px dashed #fbc02d",
-    borderRadius: "9px",
-    padding: "20px",
-    display: "flex",
-    alignItems: "center",
-    justifyContent: "center",
-    gap: "8px",
-    minHeight: "70px",
-  },
-
-  phrase: {
-    color: "#002F6C",
-    fontSize: "20px",
-    fontWeight: "700",
-    fontStyle: "italic",
-    textAlign: "center",
-    lineHeight: "1.5",
-  },
-
-  quote: {
-    color: "#b7791f",
-    fontSize: "30px",
+    display: "block",
+    marginBottom: "18px",
     fontWeight: "bold",
   },
 
-  textarea: {
+  input: {
+    display: "block",
     width: "100%",
-    padding: "12px",
-    borderRadius: "7px",
-    border: "1px solid #d1d5db",
-    resize: "vertical",
     boxSizing: "border-box",
-    fontFamily:
-      "Arial, Helvetica, sans-serif",
-    fontSize: "14px",
+    marginTop: "7px",
+    padding: "12px",
+    border: "1px solid #ccc",
+    borderRadius: "8px",
+    fontSize: "16px",
   },
 
-  audioSection: {
-    borderTop: "1px solid #e5e7eb",
-    paddingTop: "22px",
-    marginTop: "10px",
+  textarea: {
+    display: "block",
+    width: "100%",
+    boxSizing: "border-box",
+    marginTop: "7px",
+    padding: "12px",
+    border: "1px solid #ccc",
+    borderRadius: "8px",
+    fontSize: "16px",
+    resize: "vertical",
+  },
+
+  phraseBox: {
+    padding: "25px",
+    marginBottom: "15px",
+    borderRadius: "10px",
+    background: "#eef5ff",
+    textAlign: "center",
+    fontSize: "22px",
   },
 
   audioControls: {
-    display: "flex",
-    alignItems: "center",
-    gap: "15px",
-    flexWrap: "wrap",
+    textAlign: "center",
+    marginBottom: "15px",
   },
 
-  btnRecord: {
-    backgroundColor: "#dc2626",
-    color: "#fff",
+  recordButton: {
+    padding: "14px 25px",
     border: "none",
-    padding: "13px 22px",
-    borderRadius: "7px",
-    cursor: "pointer",
-    fontWeight: "700",
-    fontSize: "15px",
-  },
-
-  btnStop: {
-    backgroundColor: "#111827",
+    borderRadius: "8px",
+    background: "#198754",
     color: "#fff",
-    border: "none",
-    padding: "13px 22px",
-    borderRadius: "7px",
+    fontSize: "17px",
     cursor: "pointer",
-    fontWeight: "700",
-    fontSize: "15px",
   },
 
-  recordingStatus: {
-    display: "flex",
-    alignItems: "center",
-    gap: "8px",
-    color: "#dc2626",
-    fontWeight: "600",
-    fontSize: "14px",
+  stopButton: {
+    padding: "14px 25px",
+    border: "none",
+    borderRadius: "8px",
+    background: "#dc3545",
+    color: "#fff",
+    fontSize: "17px",
+    cursor: "pointer",
   },
 
-  recordingDot: {
-    width: "11px",
-    height: "11px",
-    borderRadius: "50%",
-    backgroundColor: "#dc2626",
-    display: "inline-block",
+  duration: {
+    textAlign: "center",
+    fontSize: "20px",
+    fontWeight: "bold",
+    marginBottom: "20px",
   },
 
   audioPreview: {
-    backgroundColor: "#f3f4f6",
-    borderRadius: "9px",
     padding: "15px",
-    marginTop: "18px",
+    borderRadius: "10px",
+    background: "#f5f5f5",
   },
 
-  audioHeader: {
-    display: "flex",
-    justifyContent: "space-between",
-    alignItems: "center",
-    gap: "10px",
-    marginBottom: "12px",
-  },
-
-  audioPlayer: {
+  audio: {
     width: "100%",
   },
 
   audioInfo: {
-    color: "#6b7280",
-    fontSize: "12px",
-    marginBottom: "0",
+    color: "#666",
+    fontSize: "14px",
   },
 
-  btnDelete: {
-    backgroundColor: "#fee2e2",
-    color: "#991b1b",
-    border: "1px solid #fecaca",
-    borderRadius: "5px",
-    padding: "6px 10px",
-    cursor: "pointer",
-    fontSize: "12px",
-    fontWeight: "600",
-  },
-
-  btnSubmit: {
-    width: "100%",
-    color: "#fff",
+  deleteButton: {
+    marginTop: "10px",
+    padding: "9px 15px",
     border: "none",
-    padding: "15px",
-    borderRadius: "8px",
-    fontWeight: "700",
-    fontSize: "16px",
-    marginTop: "25px",
+    borderRadius: "6px",
+    background: "#777",
+    color: "#fff",
+    cursor: "pointer",
   },
 
-  footerInfo: {
-    textAlign: "center",
-    color: "#6b7280",
-    fontSize: "12px",
-    lineHeight: "1.5",
-    marginTop: "12px",
+  secondaryButton: {
+    padding: "10px 16px",
+    border: "1px solid #ccc",
+    borderRadius: "8px",
+    background: "#fff",
+    cursor: "pointer",
+  },
+
+  submitButton: {
+    width: "100%",
+    padding: "16px",
+    border: "none",
+    borderRadius: "10px",
+    background: "#0d6efd",
+    color: "#fff",
+    fontSize: "18px",
+    fontWeight: "bold",
+    cursor: "pointer",
+  },
+
+  disabledButton: {
+    width: "100%",
+    padding: "16px",
+    border: "none",
+    borderRadius: "10px",
+    background: "#999",
+    color: "#fff",
+    fontSize: "18px",
+    fontWeight: "bold",
+  },
+
+  success: {
+    padding: "15px",
+    marginBottom: "20px",
+    borderRadius: "10px",
+    background: "#d1e7dd",
+    color: "#0f5132",
+  },
+
+  error: {
+    padding: "15px",
+    marginBottom: "20px",
+    borderRadius: "10px",
+    background: "#f8d7da",
+    color: "#842029",
   },
 
   footer: {
-    maxWidth: "750px",
-    margin: "25px auto 0",
     textAlign: "center",
-    color: "#6b7280",
-    fontSize: "12px",
-    display: "flex",
-    flexDirection: "column",
-    gap: "4px",
+    marginTop: "25px",
+    padding: "20px",
+  },
+
+  link: {
+    color: "#0d6efd",
+    textDecoration: "none",
   },
 };
 
+
 export default App;
-```
