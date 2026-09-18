@@ -1,4 +1,4 @@
-```jsx
+
 import React, { useEffect, useRef, useState } from "react";
 
 const BACKEND_URL =
