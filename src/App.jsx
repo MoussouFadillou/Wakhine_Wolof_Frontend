@@ -1,27 +1,128 @@
 ```jsx
 import React, { useEffect, useRef, useState } from "react";
 
-/*
-  ============================================================
-  WAKHIN WOLOF
-  Frontend React / Vite
-
-  Backend :
-  Render + FastAPI
-
-  Données :
-  Supabase PostgreSQL
-
-  Audio :
-  Supabase Storage
-  ============================================================
-*/
-
 const BACKEND_URL =
   import.meta.env.VITE_API_URL ||
   import.meta.env.VITE_BACKEND_URL ||
   "https://wakhine-wolof.onrender.com";
 
+/* ============================================================
+   MOT DE PASSE DE L'APPLICATION
+
+   Pour changer le mot de passe, ajoute dans Vercel :
+
+   VITE_APP_PASSWORD=ton_mot_de_passe
+
+   IMPORTANT :
+   Ceci protège l'interface, mais pas réellement l'API.
+   Une protection complète sera ajoutée côté FastAPI.
+============================================================ */
+
+const APP_PASSWORD =
+  import.meta.env.VITE_APP_PASSWORD || "WakhinWolof2026";
+
+
+/* ============================================================
+   RÉGIONS ET DÉPARTEMENTS DU SÉNÉGAL
+============================================================ */
+
+const REGIONS_DEPARTEMENTS = {
+  Dakar: [
+    "Dakar",
+    "Guédiawaye",
+    "Keur Massar",
+    "Pikine",
+    "Rufisque",
+  ],
+
+  Diourbel: [
+    "Bambey",
+    "Diourbel",
+    "Mbacké",
+  ],
+
+  Fatick: [
+    "Fatick",
+    "Foundiougne",
+    "Gossas",
+  ],
+
+  Kaffrine: [
+    "Birkelane",
+    "Kaffrine",
+    "Koungheul",
+    "Malem Hodar",
+  ],
+
+  Kaolack: [
+    "Guinguinéo",
+    "Kaolack",
+    "Nioro du Rip",
+  ],
+
+  Kédougou: [
+    "Kédougou",
+    "Salémata",
+    "Saraya",
+  ],
+
+  Kolda: [
+    "Kolda",
+    "Médina Yoro Foulah",
+    "Vélingara",
+  ],
+
+  Louga: [
+    "Kébémer",
+    "Linguère",
+    "Louga",
+  ],
+
+  Matam: [
+    "Kanel",
+    "Matam",
+    "Ranérou-Ferlo",
+  ],
+
+  "Saint-Louis": [
+    "Dagana",
+    "Podor",
+    "Saint-Louis",
+  ],
+
+  Sédhiou: [
+    "Bounkiling",
+    "Goudomp",
+    "Sédhiou",
+  ],
+
+  Tambacounda: [
+    "Bakel",
+    "Goudiry",
+    "Koumpentoum",
+    "Tambacounda",
+  ],
+
+  Thiès: [
+    "Mbour",
+    "Thiès",
+    "Tivaouane",
+  ],
+
+  Ziguinchor: [
+    "Bignona",
+    "Oussouye",
+    "Ziguinchor",
+  ],
+};
+
+
+const REGIONS = Object.keys(REGIONS_DEPARTEMENTS);
+
+
+/* ============================================================
+   PHRASES WOLOF
+============================================================ */
 
 const PHRASES_WOLOF = [
   "Ndakaaru laa dëkk, waaye Ndar laa juddoo.",
@@ -35,54 +136,114 @@ const PHRASES_WOLOF = [
 ];
 
 
+/* ============================================================
+   ACCENTS
+============================================================ */
+
+const ACCENTS = [
+  "Dakar",
+  "Thiès",
+  "Saint-Louis",
+  "Diourbel",
+  "Kaolack",
+  "Fatick",
+  "Louga",
+  "Matam",
+  "Kaffrine",
+  "Tambacounda",
+  "Kolda",
+  "Casamance",
+  "Kédougou",
+  "Autre",
+];
+
+
+/* ============================================================
+   APPLICATION
+============================================================ */
+
 function App() {
 
-  // ==========================================================
-  // INFORMATIONS PARTICIPANT
-  // ==========================================================
+  /* ==========================================================
+     CONNEXION
+  ========================================================== */
+
+  const [connecte, setConnecte] = useState(false);
+  const [motDePasse, setMotDePasse] = useState("");
+  const [afficherMotDePasse, setAfficherMotDePasse] =
+    useState(false);
+  const [erreurConnexion, setErreurConnexion] =
+    useState("");
+
+
+  /* ==========================================================
+     INFORMATIONS PARTICIPANT
+  ========================================================== */
 
   const [age, setAge] = useState("");
   const [sexe, setSexe] = useState("");
   const [region, setRegion] = useState("");
   const [departement, setDepartement] = useState("");
   const [accent, setAccent] = useState("");
-  const [alphabetisation, setAlphabetisation] = useState("");
+  const [alphabetisation, setAlphabetisation] =
+    useState("");
 
-  // ==========================================================
-  // PAROLE
-  // ==========================================================
+
+  /* ==========================================================
+     PAROLE
+  ========================================================== */
 
   const [typeParole, setTypeParole] = useState("");
-  const [transcription, setTranscription] = useState("");
+  const [transcription, setTranscription] =
+    useState("");
 
-  // ==========================================================
-  // AUDIO
-  // ==========================================================
 
-  const [enEnregistrement, setEnEnregistrement] = useState(false);
+  /* ==========================================================
+     AUDIO
+  ========================================================== */
+
+  const [enEnregistrement, setEnEnregistrement] =
+    useState(false);
+
   const [audioBlob, setAudioBlob] = useState(null);
-  const [audioUrlLocal, setAudioUrlLocal] = useState("");
+
+  const [audioUrlLocal, setAudioUrlLocal] =
+    useState("");
+
   const [duree, setDuree] = useState(0);
 
-  // ==========================================================
-  // ETAT APPLICATION
-  // ==========================================================
 
-  const [chargement, setChargement] = useState(false);
-  const [message, setMessage] = useState("");
-  const [erreur, setErreur] = useState("");
+  /* ==========================================================
+     APPLICATION
+  ========================================================== */
 
-  // ==========================================================
-  // ADMIN CSV
-  // ==========================================================
+  const [chargement, setChargement] =
+    useState(false);
 
-  const [afficherAdmin, setAfficherAdmin] = useState(false);
-  const [adminToken, setAdminToken] = useState("");
-  const [telechargementCSV, setTelechargementCSV] = useState(false);
+  const [message, setMessage] =
+    useState("");
 
-  // ==========================================================
-  // REFERENCES
-  // ==========================================================
+  const [erreur, setErreur] =
+    useState("");
+
+
+  /* ==========================================================
+     ADMIN
+  ========================================================== */
+
+  const [afficherAdmin, setAfficherAdmin] =
+    useState(false);
+
+  const [adminToken, setAdminToken] =
+    useState("");
+
+  const [telechargementCSV, setTelechargementCSV] =
+    useState(false);
+
+
+  /* ==========================================================
+     REFERENCES
+  ========================================================== */
 
   const mediaRecorderRef = useRef(null);
   const streamRef = useRef(null);
@@ -90,24 +251,63 @@ function App() {
   const timerRef = useRef(null);
 
 
-  // ==========================================================
-  // PHRASE WOLOF AUTOMATIQUE
-  // ==========================================================
+  /* ==========================================================
+     CONNEXION
+  ========================================================== */
+
+  const seConnecter = (event) => {
+
+    event.preventDefault();
+
+    setErreurConnexion("");
+
+    if (!motDePasse.trim()) {
+
+      setErreurConnexion(
+        "Veuillez saisir le mot de passe."
+      );
+
+      return;
+    }
+
+    if (motDePasse === APP_PASSWORD) {
+
+      setConnecte(true);
+      setMotDePasse("");
+
+    } else {
+
+      setErreurConnexion(
+        "Mot de passe incorrect."
+      );
+    }
+  };
+
+
+  /* ==========================================================
+     PHRASE AUTOMATIQUE
+  ========================================================== */
 
   useEffect(() => {
 
-    if (typeParole === "Parole lue (Texte proposé)") {
+    if (
+      typeParole ===
+      "Parole lue (Texte proposé)"
+    ) {
 
       const phrase =
         PHRASES_WOLOF[
           Math.floor(
-            Math.random() * PHRASES_WOLOF.length
+            Math.random() *
+              PHRASES_WOLOF.length
           )
         ];
 
       setTranscription(phrase);
 
-    } else if (typeParole === "Parole spontanée") {
+    } else if (
+      typeParole === "Parole spontanée"
+    ) {
 
       setTranscription("");
     }
@@ -115,9 +315,21 @@ function App() {
   }, [typeParole]);
 
 
-  // ==========================================================
-  // NETTOYAGE
-  // ==========================================================
+  /* ==========================================================
+     CHANGEMENT RÉGION
+  ========================================================== */
+
+  const changerRegion = (nouvelleRegion) => {
+
+    setRegion(nouvelleRegion);
+
+    setDepartement("");
+  };
+
+
+  /* ==========================================================
+     NETTOYAGE
+  ========================================================== */
 
   useEffect(() => {
 
@@ -132,9 +344,12 @@ function App() {
       }
 
       if (streamRef.current) {
+
         streamRef.current
           .getTracks()
-          .forEach((track) => track.stop());
+          .forEach((track) =>
+            track.stop()
+          );
       }
 
     };
@@ -142,9 +357,9 @@ function App() {
   }, [audioUrlLocal]);
 
 
-  // ==========================================================
-  // DEMARRER ENREGISTREMENT
-  // ==========================================================
+  /* ==========================================================
+     ENREGISTREMENT
+  ========================================================== */
 
   const lancerEnregistrement = async () => {
 
@@ -163,7 +378,6 @@ function App() {
         );
       }
 
-
       const stream =
         await navigator.mediaDevices.getUserMedia({
           audio: {
@@ -173,13 +387,10 @@ function App() {
           },
         });
 
-
       streamRef.current = stream;
       chunksRef.current = [];
 
-
       let mimeType = "";
-
 
       if (
         MediaRecorder.isTypeSupported(
@@ -208,7 +419,6 @@ function App() {
           "audio/ogg;codecs=opus";
       }
 
-
       const recorder = mimeType
         ? new MediaRecorder(
             stream,
@@ -216,41 +426,38 @@ function App() {
           )
         : new MediaRecorder(stream);
 
+      mediaRecorderRef.current =
+        recorder;
 
-      mediaRecorderRef.current = recorder;
+      recorder.ondataavailable =
+        (event) => {
 
+          if (
+            event.data &&
+            event.data.size > 0
+          ) {
 
-      recorder.ondataavailable = (event) => {
-
-        if (
-          event.data &&
-          event.data.size > 0
-        ) {
-
-          chunksRef.current.push(
-            event.data
-          );
-        }
-      };
-
+            chunksRef.current.push(
+              event.data
+            );
+          }
+        };
 
       recorder.onstop = () => {
 
         const blobType =
           mimeType || "audio/webm";
 
-
-        const blob = new Blob(
-          chunksRef.current,
-          {
-            type: blobType,
-          }
-        );
-
+        const blob =
+          new Blob(
+            chunksRef.current,
+            {
+              type: blobType,
+            }
+          );
 
         const url =
           URL.createObjectURL(blob);
-
 
         if (audioUrlLocal) {
 
@@ -259,18 +466,14 @@ function App() {
           );
         }
 
-
         setAudioBlob(blob);
         setAudioUrlLocal(url);
       };
 
-
       recorder.start(1000);
-
 
       setEnEnregistrement(true);
       setDuree(0);
-
 
       timerRef.current =
         setInterval(() => {
@@ -288,29 +491,28 @@ function App() {
 
       setErreur(
         error?.message ||
-          "Impossible d'accéder au microphone. Vérifiez les autorisations."
+          "Impossible d'accéder au microphone."
       );
     }
   };
 
 
-  // ==========================================================
-  // ARRETER ENREGISTREMENT
-  // ==========================================================
+  /* ==========================================================
+     ARRÊTER
+  ========================================================== */
 
   const arreterEnregistrement = () => {
 
     if (mediaRecorderRef.current) {
 
       if (
-        mediaRecorderRef.current
-          .state !== "inactive"
+        mediaRecorderRef.current.state !==
+        "inactive"
       ) {
 
         mediaRecorderRef.current.stop();
       }
     }
-
 
     if (streamRef.current) {
 
@@ -323,21 +525,19 @@ function App() {
       streamRef.current = null;
     }
 
-
     if (timerRef.current) {
 
       clearInterval(timerRef.current);
       timerRef.current = null;
     }
 
-
     setEnEnregistrement(false);
   };
 
 
-  // ==========================================================
-  // SUPPRIMER AUDIO
-  // ==========================================================
+  /* ==========================================================
+     SUPPRIMER AUDIO
+  ========================================================== */
 
   const supprimerAudio = () => {
 
@@ -354,9 +554,9 @@ function App() {
   };
 
 
-  // ==========================================================
-  // FORMAT DUREE
-  // ==========================================================
+  /* ==========================================================
+     DURÉE
+  ========================================================== */
 
   const formaterDuree = (secondes) => {
 
@@ -373,9 +573,9 @@ function App() {
   };
 
 
-  // ==========================================================
-  // VALIDATION
-  // ==========================================================
+  /* ==========================================================
+     VALIDATION
+  ========================================================== */
 
   const validerFormulaire = () => {
 
@@ -390,30 +590,21 @@ function App() {
       );
     }
 
-
     if (!sexe) {
-
       return "Veuillez sélectionner le sexe.";
     }
 
-
-    if (!region.trim()) {
-
-      return "Veuillez saisir la région.";
+    if (!region) {
+      return "Veuillez sélectionner une région.";
     }
 
-
-    if (!departement.trim()) {
-
-      return "Veuillez saisir le département.";
+    if (!departement) {
+      return "Veuillez sélectionner un département.";
     }
 
-
-    if (!accent.trim()) {
-
-      return "Veuillez saisir l'accent.";
+    if (!accent) {
+      return "Veuillez sélectionner l'accent.";
     }
-
 
     if (!alphabetisation) {
 
@@ -422,14 +613,12 @@ function App() {
       );
     }
 
-
     if (!typeParole) {
 
       return (
         "Veuillez sélectionner le type de parole."
       );
     }
-
 
     if (!audioBlob) {
 
@@ -438,14 +627,13 @@ function App() {
       );
     }
 
-
     return null;
   };
 
 
-  // ==========================================================
-  // ENVOYER CONTRIBUTION
-  // ==========================================================
+  /* ==========================================================
+     ENVOYER
+  ========================================================== */
 
   const envoyerDonnees = async (event) => {
 
@@ -454,26 +642,27 @@ function App() {
     setErreur("");
     setMessage("");
 
-
     const erreurValidation =
       validerFormulaire();
-
 
     if (erreurValidation) {
 
       setErreur(erreurValidation);
+
+      window.scrollTo({
+        top: 0,
+        behavior: "smooth",
+      });
+
       return;
     }
 
-
     setChargement(true);
-
 
     try {
 
       const formData =
         new FormData();
-
 
       formData.append(
         "age",
@@ -487,17 +676,17 @@ function App() {
 
       formData.append(
         "region",
-        region.trim()
+        region
       );
 
       formData.append(
         "departement",
-        departement.trim()
+        departement
       );
 
       formData.append(
         "accent",
-        accent.trim()
+        accent
       );
 
       formData.append(
@@ -515,13 +704,10 @@ function App() {
         transcription.trim()
       );
 
-
       const timestamp =
         Date.now();
 
-
       let extension = "webm";
-
 
       if (
         audioBlob.type.includes("ogg")
@@ -530,12 +716,12 @@ function App() {
         extension = "ogg";
       }
 
-
       const nomFichier =
         `wolof_${region
-          .trim()
-          .replace(/\s+/g, "_")}_${timestamp}.${extension}`;
-
+          .replace(/\s+/g, "_")
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          }_${timestamp}.${extension}`;
 
       formData.append(
         "audioFile",
@@ -543,26 +729,21 @@ function App() {
         nomFichier
       );
 
-
-      const url =
-        `${BACKEND_URL}/api/contribuer`;
-
-
       const response =
-        await fetch(url, {
-          method: "POST",
-          body: formData,
-        });
-
+        await fetch(
+          `${BACKEND_URL}/api/contribuer`,
+          {
+            method: "POST",
+            body: formData,
+          }
+        );
 
       const contentType =
         response.headers.get(
           "content-type"
         ) || "";
 
-
       let data;
-
 
       if (
         contentType.includes(
@@ -579,7 +760,6 @@ function App() {
           await response.text();
       }
 
-
       if (!response.ok) {
 
         const messageErreur =
@@ -591,22 +771,17 @@ function App() {
             ? data
             : `Erreur HTTP ${response.status}`;
 
-
         throw new Error(
           messageErreur
         );
       }
 
-
       setMessage(
         typeof data === "object" &&
           data?.message
           ? data.message
-          : "Contribution enregistrée avec succès ! Merci."
+          : "Contribution enregistrée avec succès !"
       );
-
-
-      // Réinitialisation
 
       setAge("");
       setSexe("");
@@ -618,7 +793,6 @@ function App() {
       setTranscription("");
 
       supprimerAudio();
-
 
       window.scrollTo({
         top: 0,
@@ -632,7 +806,6 @@ function App() {
         error
       );
 
-
       setErreur(
         error?.message ||
           "Une erreur est survenue lors de l'envoi."
@@ -645,15 +818,14 @@ function App() {
   };
 
 
-  // ==========================================================
-  // TEST BACKEND
-  // ==========================================================
+  /* ==========================================================
+     TEST BACKEND
+  ========================================================== */
 
   const testerBackend = async () => {
 
     setErreur("");
     setMessage("");
-
 
     try {
 
@@ -662,7 +834,6 @@ function App() {
           `${BACKEND_URL}/health`
         );
 
-
       if (!response.ok) {
 
         throw new Error(
@@ -670,13 +841,11 @@ function App() {
         );
       }
 
-
       const data =
         await response.json();
 
-
       setMessage(
-        `Backend opérationnel : ${
+        `✓ Backend opérationnel : ${
           data.service ||
           "Wakhin Wolof API"
         }`
@@ -693,15 +862,14 @@ function App() {
   };
 
 
-  // ==========================================================
-  // TELECHARGER CSV
-  // ==========================================================
+  /* ==========================================================
+     CSV
+  ========================================================== */
 
   const telechargerCSV = async () => {
 
     setErreur("");
     setMessage("");
-
 
     if (!adminToken.trim()) {
 
@@ -712,9 +880,7 @@ function App() {
       return;
     }
 
-
     setTelechargementCSV(true);
-
 
     try {
 
@@ -730,12 +896,10 @@ function App() {
           }
         );
 
-
       if (!response.ok) {
 
         let detail =
           `Erreur HTTP ${response.status}`;
-
 
         try {
 
@@ -750,30 +914,22 @@ function App() {
           // Rien
         }
 
-
         throw new Error(detail);
       }
-
 
       const blob =
         await response.blob();
 
-
       const url =
-        window.URL.createObjectURL(
-          blob
-        );
-
+        window.URL.createObjectURL(blob);
 
       const link =
         document.createElement("a");
-
 
       link.href = url;
 
       link.download =
         "corpus_wakhin_wolof.csv";
-
 
       document.body.appendChild(link);
 
@@ -781,14 +937,10 @@ function App() {
 
       link.remove();
 
-
-      window.URL.revokeObjectURL(
-        url
-      );
-
+      window.URL.revokeObjectURL(url);
 
       setMessage(
-        "Le fichier CSV a été téléchargé avec succès."
+        "✓ Le fichier CSV a été téléchargé avec succès."
       );
 
     } catch (error) {
@@ -797,7 +949,6 @@ function App() {
         "Erreur CSV :",
         error
       );
-
 
       setErreur(
         error?.message ||
@@ -811,299 +962,575 @@ function App() {
   };
 
 
-  // ==========================================================
-  // STYLES
-  // ==========================================================
+  /* ==========================================================
+     STYLES
+  ========================================================== */
 
   const styles = {
 
     page: {
       minHeight: "100vh",
-      background: "#f4f7f6",
-      padding: "30px 15px",
+      background:
+        "linear-gradient(135deg, #e9f7f0 0%, #f8fafc 50%, #fff8e8 100%)",
+      padding: "25px 15px 50px",
       fontFamily:
-        "Arial, sans-serif",
+        "Inter, Arial, sans-serif",
+      boxSizing: "border-box",
     },
-
 
     container: {
-      maxWidth: "850px",
+      maxWidth: "900px",
       margin: "0 auto",
-      background: "#ffffff",
-      borderRadius: "18px",
-      padding: "30px",
-      boxShadow:
-        "0 8px 30px rgba(0,0,0,0.08)",
     },
 
+    card: {
+      background: "#ffffff",
+      borderRadius: "24px",
+      boxShadow:
+        "0 15px 45px rgba(20, 60, 45, 0.10)",
+      overflow: "hidden",
+    },
 
     header: {
+      padding: "38px 25px",
       textAlign: "center",
-      marginBottom: "30px",
+      background:
+        "linear-gradient(135deg, #086b4d, #12966d)",
+      color: "#ffffff",
     },
 
+    logo: {
+      fontSize: "48px",
+      marginBottom: "5px",
+    },
 
     title: {
       margin: "0",
-      color: "#126b4f",
-      fontSize: "32px",
-      fontWeight: "700",
+      fontSize: "34px",
+      fontWeight: "800",
+      letterSpacing: "-0.5px",
     },
-
 
     subtitle: {
-      marginTop: "10px",
-      color: "#666",
-      fontSize: "16px",
+      margin:
+        "10px auto 0",
+      maxWidth: "600px",
+      fontSize: "15px",
+      lineHeight: "1.6",
+      opacity: "0.92",
     },
 
+    content: {
+      padding: "28px",
+    },
 
     section: {
-      marginBottom: "25px",
-      padding: "20px",
-      borderRadius: "14px",
-      background: "#f8faf9",
+      marginBottom: "24px",
+      padding: "23px",
+      borderRadius: "18px",
+      background: "#fbfdfc",
       border:
-        "1px solid #e3ebe7",
+        "1px solid #e3eee9",
     },
-
 
     sectionTitle: {
-      color: "#126b4f",
-      marginTop: "0",
-      marginBottom: "18px",
+      margin:
+        "0 0 20px",
+      color: "#086b4d",
       fontSize: "20px",
+      fontWeight: "750",
     },
 
-
-    label: {
-      display: "block",
-      marginBottom: "7px",
-      color: "#333",
-      fontWeight: "600",
+    sectionDescription: {
+      margin:
+        "-10px 0 20px",
+      color: "#718078",
+      fontSize: "14px",
+      lineHeight: "1.5",
     },
-
-
-    input: {
-      width: "100%",
-      padding: "12px",
-      border:
-        "1px solid #ccd8d3",
-      borderRadius: "8px",
-      fontSize: "15px",
-      boxSizing: "border-box",
-      outline: "none",
-    },
-
-
-    select: {
-      width: "100%",
-      padding: "12px",
-      border:
-        "1px solid #ccd8d3",
-      borderRadius: "8px",
-      fontSize: "15px",
-      boxSizing: "border-box",
-      background: "#fff",
-    },
-
-
-    textarea: {
-      width: "100%",
-      minHeight: "100px",
-      padding: "12px",
-      border:
-        "1px solid #ccd8d3",
-      borderRadius: "8px",
-      fontSize: "15px",
-      boxSizing: "border-box",
-      resize: "vertical",
-    },
-
 
     field: {
       marginBottom: "17px",
     },
 
-
     grid: {
       display: "grid",
       gridTemplateColumns:
         "repeat(auto-fit, minmax(220px, 1fr))",
-      gap: "15px",
+      gap: "16px",
     },
 
+    label: {
+      display: "block",
+      marginBottom: "8px",
+      color: "#26352f",
+      fontWeight: "650",
+      fontSize: "14px",
+    },
 
-    recordButton: {
+    required: {
+      color: "#d64545",
+    },
+
+    input: {
       width: "100%",
-      padding: "15px",
-      border: "none",
-      borderRadius: "10px",
+      padding: "13px 14px",
+      border:
+        "1px solid #d5e2dc",
+      borderRadius: "11px",
+      fontSize: "15px",
+      boxSizing: "border-box",
+      outline: "none",
+      background: "#ffffff",
+    },
+
+    select: {
+      width: "100%",
+      padding: "13px 14px",
+      border:
+        "1px solid #d5e2dc",
+      borderRadius: "11px",
+      fontSize: "15px",
+      boxSizing: "border-box",
+      background: "#ffffff",
+      cursor: "pointer",
+      outline: "none",
+    },
+
+    textarea: {
+      width: "100%",
+      minHeight: "110px",
+      padding: "13px 14px",
+      border:
+        "1px solid #d5e2dc",
+      borderRadius: "11px",
+      fontSize: "15px",
+      boxSizing: "border-box",
+      resize: "vertical",
+      outline: "none",
+      fontFamily:
+        "inherit",
+    },
+
+    recordArea: {
+      textAlign: "center",
+      padding: "25px 15px",
+      borderRadius: "18px",
       background:
         enEnregistrement
-          ? "#c0392b"
-          : "#126b4f",
-      color: "#fff",
-      fontSize: "16px",
-      fontWeight: "700",
-      cursor: "pointer",
+          ? "#fff1f1"
+          : "#effaf5",
+      border:
+        enEnregistrement
+          ? "1px solid #f0c6c6"
+          : "1px solid #ccebdd",
     },
 
+    microphone: {
+      fontSize: "48px",
+      marginBottom: "10px",
+    },
+
+    timer: {
+      fontSize: "34px",
+      fontWeight: "800",
+      color:
+        enEnregistrement
+          ? "#d33d3d"
+          : "#08704f",
+      margin:
+        "12px 0 20px",
+      fontVariantNumeric:
+        "tabular-nums",
+    },
+
+    recordButton: {
+      border: "none",
+      borderRadius: "50px",
+      padding: "15px 26px",
+      background:
+        enEnregistrement
+          ? "#d33d3d"
+          : "#08704f",
+      color: "#ffffff",
+      fontSize: "16px",
+      fontWeight: "750",
+      cursor: "pointer",
+      boxShadow:
+        "0 8px 20px rgba(8,112,79,0.20)",
+    },
+
+    audioBox: {
+      marginTop: "20px",
+      padding: "17px",
+      borderRadius: "13px",
+      background: "#ffffff",
+      border:
+        "1px solid #d5e8df",
+    },
+
+    audioInfo: {
+      color: "#506159",
+      fontSize: "14px",
+      lineHeight: "1.5",
+      marginTop: 0,
+    },
 
     deleteButton: {
       width: "100%",
-      padding: "12px",
-      marginTop: "10px",
+      padding: "11px",
+      marginTop: "12px",
       border: "none",
-      borderRadius: "8px",
-      background: "#e74c3c",
-      color: "#fff",
+      borderRadius: "9px",
+      background: "#f1eeee",
+      color: "#a52d2d",
       fontSize: "14px",
-      fontWeight: "600",
+      fontWeight: "650",
       cursor: "pointer",
     },
 
-
     submitButton: {
       width: "100%",
-      padding: "16px",
+      padding: "17px",
       border: "none",
-      borderRadius: "10px",
+      borderRadius: "13px",
       background:
         chargement
-          ? "#999"
-          : "#126b4f",
-      color: "#fff",
+          ? "#9ba9a3"
+          : "linear-gradient(135deg, #08704f, #12966d)",
+      color: "#ffffff",
       fontSize: "17px",
-      fontWeight: "700",
+      fontWeight: "800",
       cursor:
         chargement
           ? "not-allowed"
           : "pointer",
+      boxShadow:
+        "0 8px 25px rgba(8,112,79,0.20)",
     },
 
+    message: {
+      padding: "16px 18px",
+      marginBottom: "20px",
+      borderRadius: "13px",
+      background: "#eaf8f0",
+      color: "#146b3b",
+      border:
+        "1px solid #c6e7d2",
+      fontWeight: "600",
+      lineHeight: "1.5",
+    },
 
-    testButton: {
+    error: {
+      padding: "16px 18px",
+      marginBottom: "20px",
+      borderRadius: "13px",
+      background: "#fff0f0",
+      color: "#a42d2d",
+      border:
+        "1px solid #efc5c5",
+      fontWeight: "600",
+      lineHeight: "1.5",
+    },
+
+    utilityButton: {
       width: "100%",
       padding: "12px",
-      marginTop: "10px",
+      marginTop: "12px",
       border:
-        "1px solid #126b4f",
-      borderRadius: "8px",
-      background: "#fff",
-      color: "#126b4f",
+        "1px solid #08704f",
+      borderRadius: "10px",
+      background: "#ffffff",
+      color: "#08704f",
       fontSize: "14px",
-      fontWeight: "600",
+      fontWeight: "700",
       cursor: "pointer",
     },
-
 
     adminButton: {
       width: "100%",
-      padding: "12px",
+      padding: "13px",
       marginTop: "20px",
       border:
-        "1px solid #555",
-      borderRadius: "8px",
-      background: "#fff",
-      color: "#333",
+        "1px solid #d8d8d8",
+      borderRadius: "11px",
+      background: "#f8f8f8",
+      color: "#414141",
       fontSize: "14px",
-      fontWeight: "600",
+      fontWeight: "700",
       cursor: "pointer",
     },
 
-
     adminBox: {
-      marginTop: "15px",
-      padding: "20px",
-      borderRadius: "12px",
-      background: "#f3f4f6",
+      marginTop: "14px",
+      padding: "21px",
+      borderRadius: "16px",
+      background: "#f6f7f8",
       border:
-        "1px solid #d1d5db",
+        "1px solid #dedfe1",
     },
-
 
     csvButton: {
       width: "100%",
       padding: "14px",
-      marginTop: "10px",
+      marginTop: "8px",
       border: "none",
-      borderRadius: "9px",
-      background: "#1f7a4d",
-      color: "#fff",
-      fontSize: "16px",
-      fontWeight: "700",
+      borderRadius: "10px",
+      background: "#2867a7",
+      color: "#ffffff",
+      fontSize: "15px",
+      fontWeight: "750",
       cursor:
         telechargementCSV
           ? "not-allowed"
           : "pointer",
     },
 
-
-    audioBox: {
-      marginTop: "15px",
-      padding: "15px",
-      borderRadius: "10px",
-      background: "#eef7f3",
-      border:
-        "1px solid #cfe4db",
-    },
-
-
-    audioInfo: {
-      margin: "10px 0",
-      color: "#555",
-      fontSize: "14px",
-      lineHeight: "1.5",
-    },
-
-
-    timer: {
-      textAlign: "center",
-      fontSize: "28px",
-      fontWeight: "700",
-      color:
-        enEnregistrement
-          ? "#c0392b"
-          : "#126b4f",
-      margin: "15px 0",
-    },
-
-
-    success: {
-      padding: "15px",
-      marginBottom: "20px",
-      borderRadius: "8px",
-      background: "#e8f7ee",
-      color: "#176b3a",
-      border:
-        "1px solid #b9dfc7",
-    },
-
-
-    error: {
-      padding: "15px",
-      marginBottom: "20px",
-      borderRadius: "8px",
-      background: "#fdecec",
-      color: "#a52828",
-      border:
-        "1px solid #efb6b6",
-    },
-
-
     footer: {
-      marginTop: "25px",
       textAlign: "center",
-      color: "#777",
+      padding: "22px 10px 5px",
+      color: "#78857f",
+      fontSize: "13px",
+      lineHeight: "1.6",
+    },
+
+    loginPage: {
+      minHeight: "100vh",
+      display: "flex",
+      alignItems: "center",
+      justifyContent: "center",
+      padding: "20px",
+      background:
+        "linear-gradient(135deg, #e9f7f0, #f7faf9, #fff5df)",
+      fontFamily:
+        "Inter, Arial, sans-serif",
+      boxSizing: "border-box",
+    },
+
+    loginCard: {
+      width: "100%",
+      maxWidth: "430px",
+      background: "#ffffff",
+      borderRadius: "25px",
+      padding: "35px",
+      boxSizing: "border-box",
+      boxShadow:
+        "0 20px 55px rgba(20,60,45,0.13)",
+      textAlign: "center",
+    },
+
+    loginLogo: {
+      fontSize: "60px",
+      marginBottom: "8px",
+    },
+
+    loginTitle: {
+      margin: 0,
+      color: "#086b4d",
+      fontSize: "30px",
+      fontWeight: "800",
+    },
+
+    loginSubtitle: {
+      color: "#718078",
+      fontSize: "14px",
+      lineHeight: "1.6",
+      margin:
+        "10px 0 28px",
+    },
+
+    passwordWrapper: {
+      position: "relative",
+    },
+
+    passwordInput: {
+      width: "100%",
+      padding: "14px 50px 14px 14px",
+      border:
+        "1px solid #d5e2dc",
+      borderRadius: "11px",
+      fontSize: "16px",
+      boxSizing: "border-box",
+      outline: "none",
+    },
+
+    showPassword: {
+      position: "absolute",
+      right: "10px",
+      top: "50%",
+      transform:
+        "translateY(-50%)",
+      border: "none",
+      background: "transparent",
+      cursor: "pointer",
+      fontSize: "19px",
+    },
+
+    loginButton: {
+      width: "100%",
+      padding: "15px",
+      marginTop: "18px",
+      border: "none",
+      borderRadius: "12px",
+      background:
+        "linear-gradient(135deg, #08704f, #12966d)",
+      color: "#ffffff",
+      fontSize: "16px",
+      fontWeight: "800",
+      cursor: "pointer",
+    },
+
+    loginError: {
+      marginTop: "15px",
+      padding: "12px",
+      borderRadius: "10px",
+      background: "#fff0f0",
+      color: "#a42d2d",
+      fontSize: "14px",
+      fontWeight: "600",
+    },
+
+    logoutButton: {
+      border: "none",
+      background: "rgba(255,255,255,0.16)",
+      color: "#ffffff",
+      borderRadius: "9px",
+      padding: "8px 13px",
+      marginTop: "15px",
+      cursor: "pointer",
       fontSize: "13px",
     },
   };
 
 
-  // ==========================================================
-  // INTERFACE
-  // ==========================================================
+  /* ==========================================================
+     ÉCRAN DE CONNEXION
+  ========================================================== */
+
+  if (!connecte) {
+
+    return (
+
+      <div style={styles.loginPage}>
+
+        <div style={styles.loginCard}>
+
+          <div style={styles.loginLogo}>
+            🇸🇳
+          </div>
+
+          <h1 style={styles.loginTitle}>
+            Wakhin Wolof
+          </h1>
+
+          <p style={styles.loginSubtitle}>
+            Portail d'acquisition linguistique
+            <br />
+            Projet de recherche sur la langue wolof
+          </p>
+
+          <form onSubmit={seConnecter}>
+
+            <div style={styles.field}>
+
+              <label
+                style={{
+                  ...styles.label,
+                  textAlign: "left",
+                }}
+              >
+                🔐 Mot de passe
+              </label>
+
+              <div
+                style={
+                  styles.passwordWrapper
+                }
+              >
+
+                <input
+                  type={
+                    afficherMotDePasse
+                      ? "text"
+                      : "password"
+                  }
+                  value={motDePasse}
+                  onChange={(e) =>
+                    setMotDePasse(
+                      e.target.value
+                    )
+                  }
+                  style={
+                    styles.passwordInput
+                  }
+                  placeholder="Entrez le mot de passe"
+                  autoFocus
+                />
+
+                <button
+                  type="button"
+                  onClick={() =>
+                    setAfficherMotDePasse(
+                      !afficherMotDePasse
+                    )
+                  }
+                  style={
+                    styles.showPassword
+                  }
+                  aria-label={
+                    afficherMotDePasse
+                      ? "Masquer le mot de passe"
+                      : "Afficher le mot de passe"
+                  }
+                >
+                  {afficherMotDePasse
+                    ? "🙈"
+                    : "👁️"}
+                </button>
+
+              </div>
+
+            </div>
+
+            <button
+              type="submit"
+              style={styles.loginButton}
+            >
+              🔓 Accéder à Wakhin Wolof
+            </button>
+
+          </form>
+
+          {erreurConnexion && (
+
+            <div style={styles.loginError}>
+              ⚠️ {erreurConnexion}
+            </div>
+
+          )}
+
+          <p
+            style={{
+              marginTop: "25px",
+              color: "#8a9691",
+              fontSize: "12px",
+              lineHeight: "1.5",
+            }}
+          >
+            Accès réservé aux personnes
+            autorisées à participer à la collecte.
+          </p>
+
+        </div>
+
+      </div>
+    );
+  }
+
+
+  /* ==========================================================
+     INTERFACE PRINCIPALE
+  ========================================================== */
 
   return (
 
@@ -1111,473 +1538,768 @@ function App() {
 
       <div style={styles.container}>
 
-        <div style={styles.header}>
+        <div style={styles.card}>
 
-          <h1 style={styles.title}>
-            Wakhin Wolof 🇸🇳
-          </h1>
+          {/* HEADER */}
 
-          <p style={styles.subtitle}>
-            Portail d'Acquisition Linguistique
-            - Projet de Thèse
-          </p>
+          <div style={styles.header}>
 
-        </div>
+            <div style={styles.logo}>
+              🇸🇳
+            </div>
 
+            <h1 style={styles.title}>
+              Wakhin Wolof
+            </h1>
 
-        {message && (
-          <div style={styles.success}>
-            {message}
+            <p style={styles.subtitle}>
+              Portail d'acquisition linguistique
+              <br />
+              Collecte de données pour la recherche
+              scientifique sur la langue wolof.
+            </p>
+
+            <button
+              type="button"
+              style={styles.logoutButton}
+              onClick={() =>
+                setConnecte(false)
+              }
+            >
+              🔒 Se déconnecter
+            </button>
+
           </div>
-        )}
 
 
-        {erreur && (
-          <div style={styles.error}>
-            {erreur}
-          </div>
-        )}
+          <div style={styles.content}>
+
+            {/* MESSAGES */}
+
+            {message && (
+
+              <div style={styles.message}>
+                ✅ {message}
+              </div>
+
+            )}
+
+            {erreur && (
+
+              <div style={styles.error}>
+                ⚠️ {erreur}
+              </div>
+
+            )}
 
 
-        {/* ==================================================
-            FORMULAIRE
-        ================================================== */}
+            {/* ==================================================
+                INFORMATIONS PARTICIPANT
+            ================================================== */}
 
-        <form onSubmit={envoyerDonnees}>
+            <form
+              onSubmit={envoyerDonnees}
+            >
 
-          {/* INFORMATIONS */}
+              <div style={styles.section}>
 
-          <div style={styles.section}>
+                <h2 style={styles.sectionTitle}>
+                  👤 Informations du participant
+                </h2>
 
-            <h2 style={styles.sectionTitle}>
-              Informations du participant
-            </h2>
-
-
-            <div style={styles.grid}>
-
-              <div style={styles.field}>
-
-                <label style={styles.label}>
-                  Âge *
-                </label>
-
-                <input
-                  type="number"
-                  min="1"
-                  max="120"
-                  value={age}
-                  onChange={(e) =>
-                    setAge(e.target.value)
+                <p
+                  style={
+                    styles.sectionDescription
                   }
-                  style={styles.input}
-                  placeholder="Ex : 25"
-                />
+                >
+                  Ces informations permettent
+                  d'étudier les variations
+                  linguistiques du wolof.
+                </p>
+
+
+                <div style={styles.grid}>
+
+                  {/* AGE */}
+
+                  <div style={styles.field}>
+
+                    <label
+                      style={styles.label}
+                    >
+                      Âge{" "}
+                      <span
+                        style={
+                          styles.required
+                        }
+                      >
+                        *
+                      </span>
+                    </label>
+
+                    <input
+                      type="number"
+                      min="1"
+                      max="120"
+                      value={age}
+                      onChange={(e) =>
+                        setAge(
+                          e.target.value
+                        )
+                      }
+                      style={styles.input}
+                      placeholder="Ex. 25"
+                    />
+
+                  </div>
+
+
+                  {/* SEXE */}
+
+                  <div style={styles.field}>
+
+                    <label
+                      style={styles.label}
+                    >
+                      Sexe{" "}
+                      <span
+                        style={
+                          styles.required
+                        }
+                      >
+                        *
+                      </span>
+                    </label>
+
+                    <select
+                      value={sexe}
+                      onChange={(e) =>
+                        setSexe(
+                          e.target.value
+                        )
+                      }
+                      style={styles.select}
+                    >
+
+                      <option value="">
+                        Sélectionner
+                      </option>
+
+                      <option value="Homme">
+                        Homme
+                      </option>
+
+                      <option value="Femme">
+                        Femme
+                      </option>
+
+                    </select>
+
+                  </div>
+
+                </div>
+
+
+                {/* RÉGION */}
+
+                <div style={styles.field}>
+
+                  <label
+                    style={styles.label}
+                  >
+                    📍 Région{" "}
+                    <span
+                      style={
+                        styles.required
+                      }
+                    >
+                      *
+                    </span>
+                  </label>
+
+                  <select
+                    value={region}
+                    onChange={(e) =>
+                      changerRegion(
+                        e.target.value
+                      )
+                    }
+                    style={styles.select}
+                  >
+
+                    <option value="">
+                      Sélectionner une région
+                    </option>
+
+                    {REGIONS.map(
+                      (nomRegion) => (
+
+                        <option
+                          key={nomRegion}
+                          value={nomRegion}
+                        >
+                          {nomRegion}
+                        </option>
+
+                      )
+                    )}
+
+                  </select>
+
+                </div>
+
+
+                {/* DÉPARTEMENT */}
+
+                <div style={styles.field}>
+
+                  <label
+                    style={styles.label}
+                  >
+                    🏢 Département{" "}
+                    <span
+                      style={
+                        styles.required
+                      }
+                    >
+                      *
+                    </span>
+                  </label>
+
+                  <select
+                    value={departement}
+                    onChange={(e) =>
+                      setDepartement(
+                        e.target.value
+                      )
+                    }
+                    style={styles.select}
+                    disabled={!region}
+                  >
+
+                    <option value="">
+                      {region
+                        ? "Sélectionner un département"
+                        : "Choisissez d'abord une région"}
+                    </option>
+
+                    {region &&
+                      REGIONS_DEPARTEMENTS[
+                        region
+                      ].map(
+                        (dep) => (
+
+                          <option
+                            key={dep}
+                            value={dep}
+                          >
+                            {dep}
+                          </option>
+
+                        )
+                      )}
+
+                  </select>
+
+                </div>
+
+
+                {/* ACCENT */}
+
+                <div style={styles.field}>
+
+                  <label
+                    style={styles.label}
+                  >
+                    🗣️ Accent{" "}
+                    <span
+                      style={
+                        styles.required
+                      }
+                    >
+                      *
+                    </span>
+                  </label>
+
+                  <select
+                    value={accent}
+                    onChange={(e) =>
+                      setAccent(
+                        e.target.value
+                      )
+                    }
+                    style={styles.select}
+                  >
+
+                    <option value="">
+                      Sélectionner un accent
+                    </option>
+
+                    {ACCENTS.map(
+                      (nomAccent) => (
+
+                        <option
+                          key={nomAccent}
+                          value={nomAccent}
+                        >
+                          {nomAccent}
+                        </option>
+
+                      )
+                    )}
+
+                  </select>
+
+                </div>
+
+
+                {/* ALPHABÉTISATION */}
+
+                <div style={styles.field}>
+
+                  <label
+                    style={styles.label}
+                  >
+                    📚 Niveau d'alphabétisation{" "}
+                    <span
+                      style={
+                        styles.required
+                      }
+                    >
+                      *
+                    </span>
+                  </label>
+
+                  <select
+                    value={alphabetisation}
+                    onChange={(e) =>
+                      setAlphabetisation(
+                        e.target.value
+                      )
+                    }
+                    style={styles.select}
+                  >
+
+                    <option value="">
+                      Sélectionner
+                    </option>
+
+                    <option value="Non alphabétisé">
+                      Non alphabétisé
+                    </option>
+
+                    <option value="Primaire">
+                      Primaire
+                    </option>
+
+                    <option value="Secondaire">
+                      Secondaire
+                    </option>
+
+                    <option value="Universitaire">
+                      Universitaire
+                    </option>
+
+                  </select>
+
+                </div>
 
               </div>
 
 
-              <div style={styles.field}>
+              {/* ==================================================
+                  PAROLE
+              ================================================== */}
 
-                <label style={styles.label}>
-                  Sexe *
-                </label>
+              <div style={styles.section}>
 
-                <select
-                  value={sexe}
-                  onChange={(e) =>
-                    setSexe(e.target.value)
+                <h2 style={styles.sectionTitle}>
+                  🗣️ Type de parole
+                </h2>
+
+                <div style={styles.field}>
+
+                  <label
+                    style={styles.label}
+                  >
+                    Type de parole{" "}
+                    <span
+                      style={
+                        styles.required
+                      }
+                    >
+                      *
+                    </span>
+                  </label>
+
+                  <select
+                    value={typeParole}
+                    onChange={(e) =>
+                      setTypeParole(
+                        e.target.value
+                      )
+                    }
+                    style={styles.select}
+                  >
+
+                    <option value="">
+                      Sélectionner
+                    </option>
+
+                    <option value="Parole lue (Texte proposé)">
+                      📖 Parole lue
+                    </option>
+
+                    <option value="Parole spontanée">
+                      💬 Parole spontanée
+                    </option>
+
+                  </select>
+
+                </div>
+
+
+                {typeParole ===
+                  "Parole lue (Texte proposé)" && (
+
+                  <div style={styles.field}>
+
+                    <label
+                      style={styles.label}
+                    >
+                      📖 Phrase à lire
+                    </label>
+
+                    <textarea
+                      value={
+                        transcription
+                      }
+                      onChange={(e) =>
+                        setTranscription(
+                          e.target.value
+                        )
+                      }
+                      style={
+                        styles.textarea
+                      }
+                    />
+
+                  </div>
+
+                )}
+
+
+                {typeParole ===
+                  "Parole spontanée" && (
+
+                  <div style={styles.field}>
+
+                    <label
+                      style={styles.label}
+                    >
+                      📝 Transcription
+                    </label>
+
+                    <textarea
+                      value={
+                        transcription
+                      }
+                      onChange={(e) =>
+                        setTranscription(
+                          e.target.value
+                        )
+                      }
+                      style={
+                        styles.textarea
+                      }
+                      placeholder="Ajoutez la transcription si elle est disponible."
+                    />
+
+                  </div>
+
+                )}
+
+              </div>
+
+
+              {/* ==================================================
+                  AUDIO
+              ================================================== */}
+
+              <div style={styles.section}>
+
+                <h2 style={styles.sectionTitle}>
+                  🎙️ Enregistrement audio
+                </h2>
+
+                <p
+                  style={
+                    styles.sectionDescription
                   }
-                  style={styles.select}
+                >
+                  Installez-vous dans un endroit
+                  calme puis appuyez sur le bouton
+                  pour commencer.
+                </p>
+
+
+                <div
+                  style={
+                    styles.recordArea
+                  }
                 >
 
-                  <option value="">
-                    Sélectionner
-                  </option>
+                  <div
+                    style={
+                      styles.microphone
+                    }
+                  >
+                    {enEnregistrement
+                      ? "🔴"
+                      : "🎙️"}
+                  </div>
 
-                  <option value="Homme">
-                    Homme
-                  </option>
+                  <div
+                    style={
+                      styles.timer
+                    }
+                  >
+                    {formaterDuree(
+                      duree
+                    )}
+                  </div>
 
-                  <option value="Femme">
-                    Femme
-                  </option>
+                  <button
+                    type="button"
+                    onClick={
+                      enEnregistrement
+                        ? arreterEnregistrement
+                        : lancerEnregistrement
+                    }
+                    style={
+                      styles.recordButton
+                    }
+                  >
 
-                </select>
+                    {enEnregistrement
+                      ? "⏹️ Arrêter"
+                      : "🎙️ Commencer l'enregistrement"}
+
+                  </button>
+
+                </div>
+
+
+                {audioUrlLocal && (
+
+                  <div
+                    style={
+                      styles.audioBox
+                    }
+                  >
+
+                    <p
+                      style={
+                        styles.audioInfo
+                      }
+                    >
+                      ✅ Votre audio est prêt.
+                      Vous pouvez l'écouter avant
+                      de l'envoyer.
+                    </p>
+
+                    <audio
+                      controls
+                      src={
+                        audioUrlLocal
+                      }
+                      style={{
+                        width: "100%",
+                      }}
+                    />
+
+                    <button
+                      type="button"
+                      onClick={
+                        supprimerAudio
+                      }
+                      style={
+                        styles.deleteButton
+                      }
+                    >
+                      🗑️ Supprimer et
+                      recommencer
+                    </button>
+
+                  </div>
+
+                )}
 
               </div>
 
-            </div>
 
+              {/* ENVOI */}
 
-            <div style={styles.grid}>
-
-              <div style={styles.field}>
-
-                <label style={styles.label}>
-                  Région *
-                </label>
-
-                <input
-                  type="text"
-                  value={region}
-                  onChange={(e) =>
-                    setRegion(e.target.value)
-                  }
-                  style={styles.input}
-                  placeholder="Ex : Dakar"
-                />
-
-              </div>
-
-
-              <div style={styles.field}>
-
-                <label style={styles.label}>
-                  Département *
-                </label>
-
-                <input
-                  type="text"
-                  value={departement}
-                  onChange={(e) =>
-                    setDepartement(
-                      e.target.value
-                    )
-                  }
-                  style={styles.input}
-                  placeholder="Ex : Dakar"
-                />
-
-              </div>
-
-            </div>
-
-
-            <div style={styles.field}>
-
-              <label style={styles.label}>
-                Accent *
-              </label>
-
-              <input
-                type="text"
-                value={accent}
-                onChange={(e) =>
-                  setAccent(e.target.value)
+              <button
+                type="submit"
+                disabled={
+                  chargement
                 }
-                style={styles.input}
-                placeholder="Ex : Dakar, Saint-Louis, Casamance..."
-              />
-
-            </div>
-
-
-            <div style={styles.field}>
-
-              <label style={styles.label}>
-                Niveau d'alphabétisation *
-              </label>
-
-              <select
-                value={alphabetisation}
-                onChange={(e) =>
-                  setAlphabetisation(
-                    e.target.value
-                  )
+                style={
+                  styles.submitButton
                 }
-                style={styles.select}
               >
 
-                <option value="">
-                  Sélectionner
-                </option>
+                {chargement
+                  ? "⏳ Enregistrement en cours..."
+                  : "📤 Envoyer ma contribution"}
 
-                <option value="Non alphabétisé">
-                  Non alphabétisé
-                </option>
+              </button>
 
-                <option value="Primaire">
-                  Primaire
-                </option>
-
-                <option value="Secondaire">
-                  Secondaire
-                </option>
-
-                <option value="Universitaire">
-                  Universitaire
-                </option>
-
-              </select>
-
-            </div>
-
-          </div>
+            </form>
 
 
-          {/* TYPE PAROLE */}
-
-          <div style={styles.section}>
-
-            <h2 style={styles.sectionTitle}>
-              Type de parole
-            </h2>
-
-
-            <div style={styles.field}>
-
-              <label style={styles.label}>
-                Type de parole *
-              </label>
-
-              <select
-                value={typeParole}
-                onChange={(e) =>
-                  setTypeParole(
-                    e.target.value
-                  )
-                }
-                style={styles.select}
-              >
-
-                <option value="">
-                  Sélectionner
-                </option>
-
-                <option value="Parole lue (Texte proposé)">
-                  Parole lue (Texte proposé)
-                </option>
-
-                <option value="Parole spontanée">
-                  Parole spontanée
-                </option>
-
-              </select>
-
-            </div>
-
-
-            {typeParole ===
-              "Parole lue (Texte proposé)" && (
-
-              <div style={styles.field}>
-
-                <label style={styles.label}>
-                  Phrase à lire
-                </label>
-
-                <textarea
-                  value={transcription}
-                  onChange={(e) =>
-                    setTranscription(
-                      e.target.value
-                    )
-                  }
-                  style={styles.textarea}
-                />
-
-              </div>
-            )}
-
-
-            {typeParole ===
-              "Parole spontanée" && (
-
-              <div style={styles.field}>
-
-                <label style={styles.label}>
-                  Transcription
-                </label>
-
-                <textarea
-                  value={transcription}
-                  onChange={(e) =>
-                    setTranscription(
-                      e.target.value
-                    )
-                  }
-                  style={styles.textarea}
-                  placeholder="Vous pouvez ajouter la transcription si elle est disponible."
-                />
-
-              </div>
-            )}
-
-          </div>
-
-
-          {/* AUDIO */}
-
-          <div style={styles.section}>
-
-            <h2 style={styles.sectionTitle}>
-              Enregistrement audio
-            </h2>
-
+            {/* TEST BACKEND */}
 
             <button
               type="button"
               onClick={
-                enEnregistrement
-                  ? arreterEnregistrement
-                  : lancerEnregistrement
+                testerBackend
               }
-              style={styles.recordButton}
+              style={
+                styles.utilityButton
+              }
+            >
+              🔎 Vérifier la connexion au serveur
+            </button>
+
+
+            {/* ==================================================
+                ADMINISTRATION
+            ================================================== */}
+
+            <button
+              type="button"
+              onClick={() =>
+                setAfficherAdmin(
+                  !afficherAdmin
+                )
+              }
+              style={
+                styles.adminButton
+              }
             >
 
-              {enEnregistrement
-                ? "⏹️ Arrêter l'enregistrement"
-                : "🎙️ Commencer l'enregistrement"}
+              🔐{" "}
+              {afficherAdmin
+                ? "Masquer l'administration"
+                : "Administration / Télécharger le CSV"}
 
             </button>
 
 
-            <div style={styles.timer}>
-              {formaterDuree(duree)}
-            </div>
+            {afficherAdmin && (
 
+              <div
+                style={
+                  styles.adminBox
+                }
+              >
 
-            {audioUrlLocal && (
+                <h2
+                  style={
+                    styles.sectionTitle
+                  }
+                >
+                  📊 Administration du corpus
+                </h2>
 
-              <div style={styles.audioBox}>
-
-                <p style={styles.audioInfo}>
-                  ✅ Audio prêt à être envoyé
-                  vers Supabase Storage.
+                <p
+                  style={
+                    styles.audioInfo
+                  }
+                >
+                  Cette section est réservée
+                  au responsable de la collecte.
                 </p>
 
 
-                <audio
-                  controls
-                  src={audioUrlLocal}
-                  style={{
-                    width: "100%",
-                  }}
-                />
+                <div
+                  style={
+                    styles.field
+                  }
+                >
+
+                  <label
+                    style={
+                      styles.label
+                    }
+                  >
+                    🔑 Code administrateur
+                  </label>
+
+                  <input
+                    type="password"
+                    value={
+                      adminToken
+                    }
+                    onChange={(e) =>
+                      setAdminToken(
+                        e.target.value
+                      )
+                    }
+                    style={
+                      styles.input
+                    }
+                    placeholder="Entrer le code administrateur"
+                  />
+
+                </div>
 
 
                 <button
                   type="button"
-                  onClick={supprimerAudio}
-                  style={styles.deleteButton}
+                  onClick={
+                    telechargerCSV
+                  }
+                  disabled={
+                    telechargementCSV
+                  }
+                  style={
+                    styles.csvButton
+                  }
                 >
-                  🗑️ Supprimer l'audio
+
+                  {telechargementCSV
+                    ? "⏳ Préparation du fichier..."
+                    : "📥 Télécharger le corpus CSV"}
+
                 </button>
 
               </div>
+
             )}
 
-          </div>
 
-
-          {/* ENVOI */}
-
-          <button
-            type="submit"
-            disabled={chargement}
-            style={styles.submitButton}
-          >
-
-            {chargement
-              ? "⏳ Envoi en cours..."
-              : "📤 Envoyer la contribution"}
-
-          </button>
-
-        </form>
-
-
-        {/* TEST BACKEND */}
-
-        <button
-          type="button"
-          onClick={testerBackend}
-          style={styles.testButton}
-        >
-          🔎 Tester la connexion au backend
-        </button>
-
-
-        {/* ==================================================
-            ADMINISTRATION
-        ================================================== */}
-
-        <button
-          type="button"
-          onClick={() =>
-            setAfficherAdmin(
-              !afficherAdmin
-            )
-          }
-          style={styles.adminButton}
-        >
-
-          🔐
-          {afficherAdmin
-            ? " Masquer administration"
-            : " Administration / Télécharger CSV"}
-
-        </button>
-
-
-        {afficherAdmin && (
-
-          <div style={styles.adminBox}>
-
-            <h2 style={styles.sectionTitle}>
-              Administration du corpus
-            </h2>
-
-
-            <p style={styles.audioInfo}>
-              Cette partie est réservée au
-              responsable du corpus.
-            </p>
-
-
-            <div style={styles.field}>
-
-              <label style={styles.label}>
-                Code administrateur
-              </label>
-
-              <input
-                type="password"
-                value={adminToken}
-                onChange={(e) =>
-                  setAdminToken(
-                    e.target.value
-                  )
-                }
-                style={styles.input}
-                placeholder="Entrer le code administrateur"
-              />
-
+            <div
+              style={
+                styles.footer
+              }
+            >
+              <strong>
+                Wakhin Wolof 🇸🇳
+              </strong>
+              <br />
+              Corpus de parole wolof pour
+              la recherche scientifique.
+              <br />
+              <span>
+                Projet de recherche —
+                Acquisition linguistique
+              </span>
             </div>
 
-
-            <button
-              type="button"
-              onClick={telechargerCSV}
-              disabled={telechargementCSV}
-              style={styles.csvButton}
-            >
-
-              {telechargementCSV
-                ? "⏳ Préparation du CSV..."
-                : "📥 Télécharger le corpus CSV"}
-
-            </button>
-
           </div>
-        )}
-
-
-        <div style={styles.footer}>
-
-          Wakhin Wolof — Corpus de parole
-          wolof pour la recherche scientifique.
 
         </div>
 
