@@ -129,6 +129,7 @@ function App() {
   const [authenticated, setAuthenticated] = useState(false);
   const [password, setPassword] = useState("");
   const [loginError, setLoginError] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
 
   const [age, setAge] = useState("");
   const [sexe, setSexe] = useState("");
@@ -551,13 +552,17 @@ function App() {
               Mot de passe
             </label>
 
-            <input
-              type="password"
-              value={password}
-              onChange={(event) => setPassword(event.target.value)}
-              placeholder="Entrez le mot de passe"
-              style={styles.input}
-              autoFocus
+          <div style={{ position: "relative" }}>
+    <input
+    type={showPassword ? "text" : "password"}
+    value={password}
+    onChange={(event) => setPassword(event.target.value)}
+    placeholder="Entrez le mot de passe"
+    style={{
+      ...styles.input,
+      paddingRight: "50px",
+    }}
+    autoFocus
             />
 
             {loginError && (
