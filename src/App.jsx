@@ -6,7 +6,7 @@ const BACKEND_URL =
   "https://wakhine-wolof.onrender.com";
 
 const APP_PASSWORD =
-  import.meta.env.VITE_APP_PASSWORD || "WakhinWolof2026";
+  import.meta.env.VITE_APP_PASSWORD || "WaxeenWolof2026";
 
 const REGIONS_DEPARTEMENTS = {
   Dakar: [
