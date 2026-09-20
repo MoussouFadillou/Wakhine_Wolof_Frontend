@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 
 const BACKEND_URL =
-  import.meta.env.VITE_API_URL ||
+  import.meta.env.VITE_API_URL || 
   import.meta.env.VITE_BACKEND_URL ||
   "https://wakhine-wolof.onrender.com";
 
