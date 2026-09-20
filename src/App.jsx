@@ -540,7 +540,7 @@ function App() {
         <div style={styles.loginCard}>
           <div style={styles.logoCircle}>🗣️</div>
 
-          <h1 style={styles.loginTitle}>Wakhin Wolof</h1>
+          <h1 style={styles.loginTitle}>Waxeen Wolof</h1>
 
           <p style={styles.loginSubtitle}>
             Plateforme de collecte de données vocales en wolof
@@ -587,7 +587,7 @@ function App() {
       <header style={styles.header}>
         <div>
           <div style={styles.brand}>
-            🗣️ Wakhin Wolof
+            🗣️ Waxeen Wolof
           </div>
 
           <div style={styles.headerSubtitle}>
@@ -1041,7 +1041,7 @@ function App() {
         </section>
 
         <footer style={styles.footer}>
-          <strong>Wakhin Wolof</strong>
+          <strong>Waxeen Wolof</strong>
           <br />
           Projet de collecte de données vocales pour la
           recherche sur la reconnaissance automatique de la
